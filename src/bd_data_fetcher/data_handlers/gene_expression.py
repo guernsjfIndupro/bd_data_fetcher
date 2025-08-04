@@ -7,8 +7,8 @@ Retrieval of normal gene expression
 
 Retrieval of all gene expression data for a given study
 """
-from src.bd_data_fetcher.api.umap_client import UMapServiceClient
-from src.bd_data_fetcher.api.umap_models import RNAGeneExpressionData
+from ..api.umap_client import UMapServiceClient
+from ..api.umap_models import RNAGeneExpressionData
 from functools import lru_cache
 from typing import List
 import pandas as pd
@@ -63,7 +63,7 @@ class GeneExpressionDataHandler:
         """
         return self.umap_client._get_all_primary_sites()
 
-    def _retrieve_gene_expression_data(self, study: str) -> List[RNAGeneExpressionData]:
+    def _retrieve_gene_expression_data(self, uniprotkb_ac: str) -> List[RNAGeneExpressionData]:
         """
         Retrieve all gene expression data for a given study.
 

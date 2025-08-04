@@ -37,96 +37,96 @@ pip install bd-data-fetcher
 
 ## Quick Start
 
-### 1. Configure Environment
-
-Create a `.env` file in the project root:
+### 1. Install and Setup
 
 ```bash
-# API Configuration
-API_BASE_URL=https://api.example.com
-API_KEY=your_api_key_here
+# Install dependencies
+uv sync
 
-# Optional: Customize timeouts and retries
-API_TIMEOUT=30
-API_MAX_RETRIES=3
-API_RETRY_DELAY=1.0
+# Install in development mode
+uv pip install -e .
 ```
 
-### 2. Basic Usage
+### 2. Gene Expression Data Generation
+
+The main functionality generates comprehensive gene expression data from protein symbols:
 
 ```bash
-# Check API status
-bd-fetcher status
+# Basic usage - generate data for EGFR, TP53, BRCA1
+bd-fetcher gene-expression EGFR TP53 BRCA1
 
-# Fetch user data
-bd-fetcher users --limit 50
+# Custom output file
+bd-fetcher gene-expression EGFR TP53 --output my_data.xlsx
 
-# Fetch product data
-bd-fetcher products --limit 100
+# Verbose logging
+bd-fetcher gene-expression EGFR TP53 --verbose
+```
 
-# Search for specific data
-bd-fetcher users --search "john"
-bd-fetcher products --category "electronics"
+### 3. What It Does
 
-# Get data summary
-bd-fetcher users --verbose
+1. **Maps protein symbols** to UniProtKB accession numbers
+2. **Generates three Excel sheets**:
+   - `normal_gene_expression`: Average normal expression per primary site
+   - `gene_expression`: All expression data (normal + tumor)
+   - `gene_tumor_normal_ratios`: Tumor minus normal ratios per primary site
+3. **Saves to Excel file** with multiple sheets for analysis
+
+### 4. Example Output
+
+```
+Mapping 3 protein symbols to UniProtKB accession numbers...
+
+┌─────────┬──────────────┐
+│ Symbol  │ UniProtKB AC │
+├─────────┼──────────────┤
+│ EGFR    │ P00533       │
+│ TP53    │ P04637       │
+│ BRCA1   │ P38398       │
+└─────────┴──────────────┘
+
+Successfully mapped 3 proteins
+Generating gene expression data for 3 proteins...
+Processing EGFR (P00533)...
+Completed processing EGFR
+Processing TP53 (P04637)...
+Completed processing TP53
+Processing BRCA1 (P38398)...
+Completed processing BRCA1
+
+Gene expression data saved to: gene_expression_data.xlsx
+Processed 3 proteins successfully
 ```
 
 ## CLI Commands
 
-### Users
+### Gene Expression (Main Functionality)
 
 ```bash
-# Fetch all users
-bd-fetcher users
+# Generate gene expression data for multiple proteins
+bd-fetcher gene-expression EGFR TP53 BRCA1
 
-# Fetch specific number of users
-bd-fetcher users --limit 50
+# Custom output file
+bd-fetcher gene-expression EGFR TP53 --output my_data.xlsx
 
-# Search users
-bd-fetcher users --search "john"
+# Verbose logging for debugging
+bd-fetcher gene-expression EGFR TP53 --verbose
 
-# Fetch specific user by ID
-bd-fetcher users --id 123
-
-# Save in different format
-bd-fetcher users --format csv --output ./my_data
+# Help
+bd-fetcher gene-expression --help
 ```
 
-### Products
+### Other Commands
 
 ```bash
-# Fetch all products
-bd-fetcher products
-
-# Fetch products by category
-bd-fetcher products --category "electronics"
-
-# Search products
-bd-fetcher products --search "laptop"
-
-# Filter by price range
-bd-fetcher products --min-price 100 --max-price 500
-
-# Fetch specific product
-bd-fetcher products --id 456
-```
-
-### Categories
-
-```bash
-# List all available categories
-bd-fetcher categories
-```
-
-### Status & Configuration
-
-```bash
-# Check API connection
+# Check API connection status
 bd-fetcher status
 
 # Show current configuration
 bd-fetcher config --show
+
+# Legacy commands (for reference)
+bd-fetcher users --help
+bd-fetcher products --help
 ```
 
 ## Project Structure

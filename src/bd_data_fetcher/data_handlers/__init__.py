@@ -1,7 +1,5 @@
 """Data handlers package for BD Data Fetcher."""
 
-from .base import BaseDataHandler
-from .user_handler import UserDataHandler
-from .product_handler import ProductDataHandler
+from .gene_expression import GeneExpressionDataHandler
 
-__all__ = ["BaseDataHandler", "UserDataHandler", "ProductDataHandler"]
+__all__ = ["GeneExpressionDataHandler"]

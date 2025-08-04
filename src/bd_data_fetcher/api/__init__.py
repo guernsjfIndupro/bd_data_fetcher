@@ -1,5 +1,5 @@
 """API client package for BD Data Fetcher."""
 
-from .client import APIClient
+from .umap_client import UMapServiceClient
 
-__all__ = ["APIClient"]
+__all__ = ["UMapServiceClient"]

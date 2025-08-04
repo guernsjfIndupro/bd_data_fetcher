@@ -1,6 +1,43 @@
+import enum
 from typing import Optional
 from pydantic import BaseModel
 
+class OncLineageEnum(enum.Enum):
+    LUNG = "Lung"
+    NORMAL = "Normal"
+    EYE = "Eye"
+    BONE = "Bone"
+    VULVA_VAGINA = "Vulva/Vagina"
+    LYMPHOID = "Lymphoid"
+    OTHER = "Other"
+    LIVER = "Liver"
+    FIBROBLAST = "Fibroblast"
+    UTERUS = "Uterus"
+    THYROID = "Thyroid"
+    ESOPHAGUS_STOMACH = "Esophagus/Stomach"
+    TESTIS = "Testis"
+    HAIR = "Hair"
+    SKIN = "Skin"
+    SOFTTISSUE = "Soft Tissue"
+    AMPULLAOFVATER = "Ampulla of Vater"
+    CERVIX = "Cervix"
+    BLADDER_URINARYTRACT = "Bladder/Urinary Tract"
+    KIDNEY = "Kidney"
+    HEADANDNECK = "Head and Neck"
+    BOWEL = "Bowel"
+    BILIARYTRACT = "Biliary Tract"
+    CNS_BRAIN = "CNS/Brain"
+    PANCREAS = "Pancreas"
+    OVARY_FALLOPIANTUBE = "Ovary/Fallopian Tube"
+    ADRENALGLAND = "Adrenal Gland"
+    PLEURA = "Pleura"
+    PERIPHERALNERVOUSSYSTEM = "Peripheral Nervous System"
+    EMBRYONAL = "Embryonal"
+    BREAST = "Breast"
+    PROSTATE = "Prostate"
+    MUSCLE = "Muscle"
+    MYELOID = "Myeloid"
+    UNKNOWN = "Unknown"
 
 # Pydantic deserialzation models
 class CellLineProteomicsData(BaseModel):

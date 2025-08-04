@@ -8,15 +8,14 @@ from urllib.parse import urljoin
 from functools import lru_cache
 
 
-# TODO just use production url
-from src.mint_mind.core.config import settings
-
-from src.bd_data_fetcher.api.umap_models import (
+from .umap_models import (
     CellLineProteomicsData,
     CellLineData,
     ReciprocalMicroMapData,
     TissueSampleDiaIntensity,
     RNAGeneExpressionData,
+    ProteomicsNormalExpressionData,
+    ExternalProteinExpressionData,
 )
 
 logger = logging.getLogger(__name__)
@@ -29,11 +28,7 @@ class UMapServiceClient:
         """
         Initialize the UMap service client.
         """
-        # NOTE: I will need to use the production url for this
-        # when executing any TCGA/GTEX modules
-        # RNAGeneExpressionModule
-        # GTEXNormalRNAExpressionModule
-        self.base_url = "https://indupro-apps.com/umap-service/api/v1"
+        self.base_url = "https://indupro-apps.com/umap-service/api/v1/"
 
         if not self.base_url:
             raise ValueError("Base URL must set in UMAP_SERVICE_URL environment variable")
@@ -62,7 +57,7 @@ class UMapServiceClient:
         Returns:
             Response data
         """
-        self.endpoint_url = urljoin(self.base_url, endpoint)
+        self.endpoint_url = self.base_url + endpoint
         response = self.session.get(self.endpoint_url, params=params)
         response.raise_for_status()
         return response.json()
@@ -80,7 +75,7 @@ class UMapServiceClient:
         Returns:
             Response data
         """
-        self.endpoint_url = urljoin(self.base_url, endpoint)
+        self.endpoint_url = self.base_url + endpoint
         response = self.session.post(self.endpoint_url, json=data, params=params)
         response.raise_for_status()
         return response.json()
@@ -128,7 +123,7 @@ class UMapServiceClient:
         endpoint: str,
         params: Optional[Dict[str, Any]] = None,
         data: Optional[Dict[str, Any]] = None,
-        page_size: int = 1000,
+        page_size: int = 10,
     ) -> List[Dict[str, Any]]:
         """
         Generic paginated GET request.
@@ -238,14 +233,17 @@ class UMapServiceClient:
         This table is ~99% of our data so it is not restored locally
         in the umap service.
         """
-        endpoint = "pancancer"
+        endpoint = "pancancer/"
         body = {
             "uniprotkb_acs": uniprotkb_acs,
             "ensembl_ids": [],
             "primary_sites": [],
             "sample_types": [],
         }
-        unvalidated_data = self._post_paginated(endpoint=endpoint, data=body)
+        # Use single POST request with pagination parameters as URL params
+        params = {"page_request": 1, "page_size": 250}
+        response = self._post(endpoint=endpoint, data=body, params=params)
+        unvalidated_data = response.get("data", [])
         validated_data = [RNAGeneExpressionData(**data) for data in unvalidated_data]
         return validated_data
 
@@ -303,4 +301,40 @@ class UMapServiceClient:
         """
         endpoint = "pancancer/indications"
         return self._get(endpoint=endpoint)
+
+    def map_protein(self, gene_symbols: List[str]) -> Dict[str, str]:
+        """
+        Map gene symbols to UniProtKB accession numbers.
+        
+        Args:
+            gene_symbols: List of gene symbols to map
+            
+        Returns:
+            Dictionary mapping symbols to uniprotkb_ac
+        """
+        endpoint = "proteins/mapping"
+        
+        # Prepare request body matching the curl command
+        body = {
+            "protein_ids": [],
+            "uniprotkb_acs": [],
+            "symbols": gene_symbols
+        }
+        
+        # Make the POST request
+        response = self._post(endpoint=endpoint, data=body)
+        mappings = {}
+        
+        # Extract the data from the response
+        if "data" in response:
+            # Create mapping dictionary: symbol -> uniprotkb_ac
+            
+            for protein_data in response["data"]:
+                uniprotkb_ac = protein_data.get("uniprotkb_ac")
+                primary_symbol = protein_data.get("primary_symbol")
+                
+                if uniprotkb_ac and primary_symbol:
+                    mappings[primary_symbol] = uniprotkb_ac
+            
+        return mappings
 
