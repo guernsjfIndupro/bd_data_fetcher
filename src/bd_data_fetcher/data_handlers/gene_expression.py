@@ -85,22 +85,30 @@ class GeneExpressionDataHandler:
         """
         sheet_name = "normal_gene_expression"
 
+        # Check if file exists and what sheets it has
+        existing_sheets = {}
         try:
             with pd.ExcelFile(file_path) as xls:
-                if sheet_name not in xls.sheet_names:
-                    # Create a new sheet with the default column names
-                    primary_sites = self.get_all_primary_sites()
-                    columns = ["Gene"] + sorted(primary_sites)
-                    new_df = pd.DataFrame(columns=columns)
-                    with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
-                        new_df.to_excel(writer, sheet_name=sheet_name, index=False)
+                for sheet in xls.sheet_names:
+                    existing_sheets[sheet] = pd.read_excel(file_path, sheet_name=sheet)
         except FileNotFoundError:
-            # Create a new sheet with the default column names
+            # File doesn't exist, we'll create it
+            pass
+
+        # Create the sheet if it doesn't exist
+        if sheet_name not in existing_sheets:
             primary_sites = self.get_all_primary_sites()
             columns = ["Gene"] + sorted(primary_sites)
             new_df = pd.DataFrame(columns=columns)
-            with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
-                new_df.to_excel(writer, sheet_name=sheet_name, index=False)
+            
+            if existing_sheets:
+                # Append to existing file
+                with pd.ExcelWriter(file_path, engine="openpyxl", mode='a') as writer:
+                    new_df.to_excel(writer, sheet_name=sheet_name, index=False)
+            else:
+                # Create new file
+                with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
+                    new_df.to_excel(writer, sheet_name=sheet_name, index=False)
 
         normal_gene_expression = self._retrieve_normal_gene_expression(uniprotkb_ac)
         normal_df = pd.DataFrame([obj.dict() for obj in normal_gene_expression])
@@ -150,21 +158,29 @@ class GeneExpressionDataHandler:
         """
         sheet_name = "gene_expression"
         
-        # Ensure sheet exists with proper column structure
+        # Check if file exists and what sheets it has
+        existing_sheets = {}
         try:
             with pd.ExcelFile(file_path) as xls:
-                if sheet_name not in xls.sheet_names:
-                    # Create a new sheet with the correct column names
-                    columns = ["Gene", "Expression Value", "Primary Site", "Is Cancer"]
-                    new_df = pd.DataFrame(columns=columns)
-                    with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
-                        new_df.to_excel(writer, sheet_name=sheet_name, index=False)
+                for sheet in xls.sheet_names:
+                    existing_sheets[sheet] = pd.read_excel(file_path, sheet_name=sheet)
         except FileNotFoundError:
-            # Create a new Excel file with the gene_expression sheet
+            # File doesn't exist, we'll create it
+            pass
+
+        # Create the sheet if it doesn't exist
+        if sheet_name not in existing_sheets:
             columns = ["Gene", "Expression Value", "Primary Site", "Is Cancer"]
             new_df = pd.DataFrame(columns=columns)
-            with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
-                new_df.to_excel(writer, sheet_name=sheet_name, index=False)
+            
+            if existing_sheets:
+                # Append to existing file
+                with pd.ExcelWriter(file_path, engine="openpyxl", mode='a') as writer:
+                    new_df.to_excel(writer, sheet_name=sheet_name, index=False)
+            else:
+                # Create new file
+                with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
+                    new_df.to_excel(writer, sheet_name=sheet_name, index=False)
 
         # Retrieve gene expression data
         gene_expression = self._retrieve_gene_expression_data(uniprotkb_ac)
@@ -206,23 +222,30 @@ class GeneExpressionDataHandler:
         """
         sheet_name = "gene_tumor_normal_ratios"
         
-        # Ensure sheet exists with proper column structure (same as normal gene expression)
+        # Check if file exists and what sheets it has
+        existing_sheets = {}
         try:
             with pd.ExcelFile(file_path) as xls:
-                if sheet_name not in xls.sheet_names:
-                    # Create a new sheet with the default column names
-                    primary_sites = self.get_all_primary_sites()
-                    columns = ["Gene"] + sorted(primary_sites)
-                    new_df = pd.DataFrame(columns=columns)
-                    with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
-                        new_df.to_excel(writer, sheet_name=sheet_name, index=False)
+                for sheet in xls.sheet_names:
+                    existing_sheets[sheet] = pd.read_excel(file_path, sheet_name=sheet)
         except FileNotFoundError:
-            # Create a new sheet with the default column names
+            # File doesn't exist, we'll create it
+            pass
+
+        # Create the sheet if it doesn't exist
+        if sheet_name not in existing_sheets:
             primary_sites = self.get_all_primary_sites()
             columns = ["Gene"] + sorted(primary_sites)
             new_df = pd.DataFrame(columns=columns)
-            with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
-                new_df.to_excel(writer, sheet_name=sheet_name, index=False)
+            
+            if existing_sheets:
+                # Append to existing file
+                with pd.ExcelWriter(file_path, engine="openpyxl", mode='a') as writer:
+                    new_df.to_excel(writer, sheet_name=sheet_name, index=False)
+            else:
+                # Create new file
+                with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
+                    new_df.to_excel(writer, sheet_name=sheet_name, index=False)
 
         # Retrieve gene expression data (contains both normal and tumor data)
         all_gene_expression = self._retrieve_gene_expression_data(uniprotkb_ac)

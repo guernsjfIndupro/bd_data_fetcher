@@ -240,10 +240,8 @@ class UMapServiceClient:
             "primary_sites": [],
             "sample_types": [],
         }
-        # Use single POST request with pagination parameters as URL params
-        params = {"page_request": 1, "page_size": 250}
-        response = self._post(endpoint=endpoint, data=body, params=params)
-        unvalidated_data = response.get("data", [])
+        # Use paginated POST request to get all data
+        unvalidated_data = self._post_paginated(endpoint=endpoint, data=body, page_size=1000)
         validated_data = [RNAGeneExpressionData(**data) for data in unvalidated_data]
         return validated_data
 
