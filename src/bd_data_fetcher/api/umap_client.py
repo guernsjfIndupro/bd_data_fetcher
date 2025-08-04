@@ -16,6 +16,9 @@ from .umap_models import (
     RNAGeneExpressionData,
     ProteomicsNormalExpressionData,
     ExternalProteinExpressionData,
+    ReplicateSetsResponse,
+    ReplicateSet,
+    AnalysisResult,
 )
 
 logger = logging.getLogger(__name__)
@@ -126,7 +129,7 @@ class UMapServiceClient:
         page_size: int = 10,
     ) -> List[Dict[str, Any]]:
         """
-        Generic paginated GET request.
+        Generic paginated POST request.
 
         Args:
             endpoint: API endpoint to call
@@ -335,4 +338,52 @@ class UMapServiceClient:
                     mappings[primary_symbol] = uniprotkb_ac
             
         return mappings
+
+    def _get_replicate_sets(self, include_dev_invalid: bool = True, page_size: int = 200) -> List[ReplicateSet]:
+        """
+        Get all replicate sets from the UMap service using pagination.
+        
+        Args:
+            include_dev_invalid: Whether to include development invalid entries
+            page_size: Number of items per page
+            
+        Returns:
+            List of all ReplicateSet objects across all pages
+        """
+        endpoint = "replicate-sets/"
+        params = {
+            "include_dev_invalid": include_dev_invalid,
+            "page_size": page_size
+        }
+        
+        # Use the existing _get_paginated helper
+        unvalidated_data = self._get_paginated(endpoint=endpoint, params=params, page_size=page_size)
+        
+        # Convert to ReplicateSet objects
+        validated_data = [ReplicateSet(**data) for data in unvalidated_data]
+        return validated_data
+
+    def _get_analysis_results(self, replicate_set_id: int, page_size: int = 10) -> List[AnalysisResult]:
+        """
+        Get analysis results for a specific replicate set from the UMap service using pagination.
+        
+        Args:
+            replicate_set_id: The ID of the replicate set to get analysis results for
+            page_size: Number of items per page
+            
+        Returns:
+            List of all AnalysisResult objects across all pages
+        """
+        endpoint = "analysis-results/"
+        params = {
+            "replicate_set_id": replicate_set_id,
+            "page_size": page_size
+        }
+        
+        # Use the existing _get_paginated helper
+        unvalidated_data = self._get_paginated(endpoint=endpoint, params=params, page_size=page_size)
+        
+        # Convert to AnalysisResult objects
+        validated_data = [AnalysisResult(**data) for data in unvalidated_data]
+        return validated_data
 
