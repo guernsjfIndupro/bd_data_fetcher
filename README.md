@@ -12,6 +12,7 @@ A production-grade CLI tool for fetching and processing data from REST APIs.
 - 🧪 **Tested**: Comprehensive test suite with pytest
 - 📦 **Production Ready**: Type hints, error handling, and best practices
 
+
 ## Installation
 
 ### Using UV (Recommended)
