@@ -200,6 +200,29 @@ class UMapServiceClient:
         validated_data = [CellLineProteomicsData(**data) for data in unvalidated_data]
         return validated_data
 
+    def _get_all_cell_line_proteomics_data(
+        self, cell_line_name: str, page_size: int = 1000
+    ) -> List[CellLineProteomicsData]:
+        """
+        Get all cell line proteomics data for a specific cell line from the UMap service.
+        
+        Args:
+            cell_line_name: Name of the cell line to retrieve data for
+            page_size: Number of items per page (default: 1000)
+            
+        Returns:
+            List of CellLineProteomicsData objects for the specified cell line
+        """
+        endpoint = "dia/cell_line/all"
+        
+        unvalidated_data = self._get_paginated(
+            endpoint=endpoint, 
+            params={"cell_line_name": cell_line_name},
+            page_size=page_size
+        )
+        validated_data = [CellLineProteomicsData(**data) for data in unvalidated_data]
+        return validated_data
+
     def _get_proteomics_tissue_data(
         self, uniprotkb_ac: str
     ) -> List[TissueSampleDiaIntensity]:
