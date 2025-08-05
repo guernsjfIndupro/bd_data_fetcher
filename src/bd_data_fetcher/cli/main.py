@@ -11,11 +11,13 @@ from rich.console import Console
 from rich.table import Table
 
 from ..api.umap_client import UMapServiceClient
-from ..data_handlers.gene_expression import GeneExpressionDataHandler
-from ..data_handlers.umap import uMapDataHandler
-from ..data_handlers.internal_wce import WCEDataHandler
 from ..data_handlers.depmap import DepMapDataHandler
-from ..data_handlers.external_protein_expression import ExternalProteinExpressionDataHandler
+from ..data_handlers.external_protein_expression import (
+    ExternalProteinExpressionDataHandler,
+)
+from ..data_handlers.gene_expression import GeneExpressionDataHandler
+from ..data_handlers.internal_wce import WCEDataHandler
+from ..data_handlers.umap import uMapDataHandler
 
 # Initialize Typer app
 app = typer.Typer(
@@ -26,6 +28,7 @@ app = typer.Typer(
 
 # Initialize console for rich output
 console = Console()
+
 
 # Configure logging
 def setup_logging(log_level: str = "INFO", log_file: Optional[str] = None):
@@ -40,7 +43,7 @@ def setup_logging(log_level: str = "INFO", log_file: Optional[str] = None):
         structlog.processors.format_exc_info,
         structlog.processors.UnicodeDecoder(),
     ]
-    
+
     if log_file:
         processors.append(structlog.processors.JSONRenderer())
         structlog.configure(
@@ -61,55 +64,68 @@ def setup_logging(log_level: str = "INFO", log_file: Optional[str] = None):
 
 @app.command()
 def gene_expression(
-    symbols: list[str] = typer.Argument(..., help="List of protein symbols (e.g., EGFR TP53 BRCA1)"),
-    output: str = typer.Option("output.xlsx", "--output", "-o", help="Output Excel file name"),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging"),
+    symbols: list[str] = typer.Argument(
+        ..., help="List of protein symbols (e.g., EGFR TP53 BRCA1)"
+    ),
+    output: str = typer.Option(
+        "output.xlsx", "--output", "-o", help="Output Excel file name"
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose logging"
+    ),
 ):
     """
     Generate gene expression data for protein symbols.
-    
+
     Maps protein symbols to UniProtKB accession numbers and generates comprehensive gene expression data.
     """
     log_level = "DEBUG" if verbose else "INFO"
     setup_logging(log_level)
     logger = structlog.get_logger(__name__)
-    
+
     try:
         # Initialize UMap client
         umap_client = UMapServiceClient()
-        
+
         # Map protein symbols to UniProtKB accession numbers
-        console.print(f"Mapping {len(symbols)} protein symbols to UniProtKB accession numbers...")
+        console.print(
+            f"Mapping {len(symbols)} protein symbols to UniProtKB accession numbers..."
+        )
         symbol_mappings = umap_client.map_protein(symbols)
-        
+
         if not symbol_mappings:
-            console.print("No protein mappings found. Please check your protein symbols.", style="red")
+            console.print(
+                "No protein mappings found. Please check your protein symbols.",
+                style="red",
+            )
             sys.exit(1)
-        
+
         # Display mappings
         table = Table(title="Protein Symbol Mappings")
         table.add_column("Symbol", style="cyan")
         table.add_column("UniProtKB AC", style="green")
-        
+
         for symbol, uniprotkb_ac in symbol_mappings.items():
             table.add_row(symbol, uniprotkb_ac)
-        
+
         console.print(table)
         console.print(f"Successfully mapped {len(symbol_mappings)} proteins")
-        
+
         # Initialize data handlers
         gene_handler = GeneExpressionDataHandler()
         umap_handler = uMapDataHandler()
         wce_handler = WCEDataHandler()
         depmap_handler = DepMapDataHandler()
         external_protein_handler = ExternalProteinExpressionDataHandler()
-        
+
         # Generate gene expression data for each protein
-        console.print(f"Generating gene expression data for {len(symbol_mappings)} proteins...")
-        
+        console.print(
+            f"Generating gene expression data for {len(symbol_mappings)} proteins..."
+        )
+
         for symbol, uniprotkb_ac in symbol_mappings.items():
             console.print(f"Processing {symbol} ({uniprotkb_ac})...")
-            
+
             try:
                 # Generate all three types of gene expression data
                 # gene_handler.build_normal_gene_expression_sheet(uniprotkb_ac, output)
@@ -139,24 +155,30 @@ def gene_expression(
                 external_protein_handler.build_normal_proteomics_sheet(uniprotkb_ac, output)
                 console.print(f"Generated normal proteomics data sheet records for {symbol}")
                 """
-                external_protein_handler.build_study_specific_sheet(uniprotkb_ac, output)
-                console.print(f"Generated study specific proteomics data sheet records for {symbol}")
+                external_protein_handler.build_study_specific_sheet(
+                    uniprotkb_ac, output
+                )
+                console.print(
+                    f"Generated study specific proteomics data sheet records for {symbol}"
+                )
 
                 console.print(f"Completed processing {symbol}")
-                
+
             except Exception as e:
                 logger.error(f"Failed to process {symbol}", error=str(e))
-                console.print(f"Warning: Failed to process {symbol}: {str(e)}", style="yellow")
+                console.print(
+                    f"Warning: Failed to process {symbol}: {str(e)}", style="yellow"
+                )
                 continue
-        
+
         console.print(f"Gene expression data saved to: {output}")
         console.print(f"Processed {len(symbol_mappings)} proteins successfully")
-        
+
         # Show file information
         if Path(output).exists():
             file_size = Path(output).stat().st_size
             console.print(f"File size: {file_size:,} bytes")
-        
+
     except Exception as e:
         logger.error("Failed to generate gene expression data", error=str(e))
         console.print(f"Error: {str(e)}", style="red")
@@ -169,4 +191,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main() 
+    main()

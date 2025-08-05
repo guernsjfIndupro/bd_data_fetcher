@@ -1,25 +1,24 @@
-from typing import Dict, Any, List, Optional
-import requests
 import logging
-from requests.adapters import HTTPAdapter
-from urllib3 import Retry
+from functools import lru_cache
+from typing import Any, Dict, List, Optional
 from urllib.parse import urljoin
 
-from functools import lru_cache
-
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3 import Retry
 
 from .umap_models import (
-    CellLineProteomicsData,
-    CellLineData,
-    ReciprocalMicroMapData,
-    TissueSampleDiaIntensity,
-    RNAGeneExpressionData,
-    ProteomicsNormalExpressionData,
-    ExternalProteinExpressionData,
-    ReplicateSetsResponse,
-    ReplicateSet,
     AnalysisResult,
+    CellLineData,
+    CellLineProteomicsData,
     DepMapData,
+    ExternalProteinExpressionData,
+    ProteomicsNormalExpressionData,
+    ReciprocalMicroMapData,
+    ReplicateSet,
+    ReplicateSetsResponse,
+    RNAGeneExpressionData,
+    TissueSampleDiaIntensity,
 )
 
 logger = logging.getLogger(__name__)
@@ -35,9 +34,10 @@ class UMapServiceClient:
         # self.base_url = "https://indupro-apps.com/umap-service/api/v1/"
         self.base_url = "http://localhost:8081/umap-service/api/v1/"
 
-
         if not self.base_url:
-            raise ValueError("Base URL must set in UMAP_SERVICE_URL environment variable")
+            raise ValueError(
+                "Base URL must set in UMAP_SERVICE_URL environment variable"
+            )
 
         retry_strategy = Retry(
             total=3,
@@ -52,7 +52,9 @@ class UMapServiceClient:
         # Local Development
         self.session.mount("http://", adapter)
 
-    def _get(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def _get(
+        self, endpoint: str, params: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         """
         Generic GET request.
 
@@ -69,7 +71,10 @@ class UMapServiceClient:
         return response.json()
 
     def _post(
-        self, endpoint: str, data: Dict[str, Any], params: Optional[Dict[str, Any]] = None
+        self,
+        endpoint: str,
+        data: Dict[str, Any],
+        params: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Generic POST request.
@@ -181,7 +186,9 @@ class UMapServiceClient:
         return validated_data
 
     @lru_cache(maxsize=10000)
-    def _get_proteomics_cell_line_data(self, uniprotkb_ac: str) -> List[CellLineProteomicsData]:
+    def _get_proteomics_cell_line_data(
+        self, uniprotkb_ac: str
+    ) -> List[CellLineProteomicsData]:
         """
         Get cell line data from the UMap service.
         """
@@ -193,7 +200,9 @@ class UMapServiceClient:
         validated_data = [CellLineProteomicsData(**data) for data in unvalidated_data]
         return validated_data
 
-    def _get_proteomics_tissue_data(self, uniprotkb_ac: str) -> List[TissueSampleDiaIntensity]:
+    def _get_proteomics_tissue_data(
+        self, uniprotkb_ac: str
+    ) -> List[TissueSampleDiaIntensity]:
         """
         Get proteomics tissue data from the UMap service.
         """
@@ -247,7 +256,9 @@ class UMapServiceClient:
             "sample_types": [],
         }
         # Use paginated POST request to get all data
-        unvalidated_data = self._post_paginated(endpoint=endpoint, data=body, page_size=1000)
+        unvalidated_data = self._post_paginated(
+            endpoint=endpoint, data=body, page_size=1000
+        )
         validated_data = [RNAGeneExpressionData(**data) for data in unvalidated_data]
         return validated_data
 
@@ -262,7 +273,9 @@ class UMapServiceClient:
             "uniprotkb_ac": uniprotkb_ac,
         }
         unvalidated_data = self._get(endpoint=endpoint, params=params)
-        validated_data = [ProteomicsNormalExpressionData(**data) for data in unvalidated_data]
+        validated_data = [
+            ProteomicsNormalExpressionData(**data) for data in unvalidated_data
+        ]
         return validated_data
 
     def _get_proteomics_normal_expression_data_bounds(self) -> Dict[str, float]:
@@ -296,7 +309,9 @@ class UMapServiceClient:
         }
         endpoint = "external/study/data"
         unvalidated_data = self._get_paginated(endpoint=endpoint, params=params)
-        validated_data = [ExternalProteinExpressionData(**data) for data in unvalidated_data]
+        validated_data = [
+            ExternalProteinExpressionData(**data) for data in unvalidated_data
+        ]
         return validated_data
 
     def _get_all_primary_sites(self) -> List[str]:
@@ -309,72 +324,68 @@ class UMapServiceClient:
     def map_protein(self, gene_symbols: List[str]) -> Dict[str, str]:
         """
         Map gene symbols to UniProtKB accession numbers.
-        
+
         Args:
             gene_symbols: List of gene symbols to map
-            
+
         Returns:
             Dictionary mapping symbols to uniprotkb_ac
         """
         endpoint = "proteins/mapping"
-        
+
         # Prepare request body matching the curl command
-        body = {
-            "protein_ids": [],
-            "uniprotkb_acs": [],
-            "symbols": gene_symbols
-        }
-        
+        body = {"protein_ids": [], "uniprotkb_acs": [], "symbols": gene_symbols}
+
         # Make the POST request
         response = self._post(endpoint=endpoint, data=body)
         mappings = {}
-        
+
         # Extract the data from the response
         if "data" in response:
             # Create mapping dictionary: symbol -> uniprotkb_ac
-            
+
             for protein_data in response["data"]:
                 uniprotkb_ac = protein_data.get("uniprotkb_ac")
                 primary_symbol = protein_data.get("primary_symbol")
-                
+
                 if uniprotkb_ac and primary_symbol:
                     mappings[primary_symbol] = uniprotkb_ac
-            
+
         return mappings
 
-    def _get_replicate_sets(self, include_dev_invalid: bool = True, page_size: int = 200) -> List[ReplicateSet]:
+    def _get_replicate_sets(
+        self, include_dev_invalid: bool = True, page_size: int = 200
+    ) -> List[ReplicateSet]:
         """
         Get all replicate sets from the UMap service using pagination.
-        
+
         Args:
             include_dev_invalid: Whether to include development invalid entries
             page_size: Number of items per page
-            
+
         Returns:
             List of all ReplicateSet objects across all pages
         """
         endpoint = "replicate-sets/"
-        params = {
-            "include_dev_invalid": include_dev_invalid,
-            "page_size": page_size
-        }
-        
+        params = {"include_dev_invalid": include_dev_invalid, "page_size": page_size}
+
         # Use the existing _get_paginated helper
-        unvalidated_data = self._get_paginated(endpoint=endpoint, params=params, page_size=page_size)
-        
+        unvalidated_data = self._get_paginated(
+            endpoint=endpoint, params=params, page_size=page_size
+        )
+
         # Convert to ReplicateSet objects
         validated_data = [ReplicateSet(**data) for data in unvalidated_data]
         return validated_data
 
-    def _get_analysis_results(self, replicate_set_id: int, page_size: int = 1000) -> List[AnalysisResult]:
+    def _get_analysis_results(
+        self, replicate_set_id: int, page_size: int = 1000
+    ) -> List[AnalysisResult]:
         """
         Get analysis results from the UMap service.
         """
         endpoint = "analysis-results/"
-        params = {
-            "replicate_set_id": replicate_set_id,
-            "page_size": page_size
-        }
+        params = {"replicate_set_id": replicate_set_id, "page_size": page_size}
         unvalidated_data = self._get_paginated(
             endpoint=endpoint, params=params, page_size=page_size
         )
@@ -382,30 +393,29 @@ class UMapServiceClient:
         return validated_data
 
     def _get_dep_map_data(
-        self, uniprotkb_acs: List[str], ccle_model_ids: Optional[List[str]] = None, page_size: int = 1000
+        self,
+        uniprotkb_acs: List[str],
+        ccle_model_ids: Optional[List[str]] = None,
+        page_size: int = 1000,
     ) -> List[DepMapData]:
         """
         Get dep-map data from the UMap service.
-        
+
         Args:
             uniprotkb_acs: List of UniProtKB accession numbers
             ccle_model_ids: Optional list of CCLE model IDs to filter by
             page_size: Number of items per page
-            
+
         Returns:
             List of DepMapData objects
         """
         endpoint = "cell-line/dep-map"
-        
+
         # Prepare request data
-        data = {
-            "uniprotkb_acs": uniprotkb_acs,
-            "ccle_model_ids": ccle_model_ids or []
-        }
-        
+        data = {"uniprotkb_acs": uniprotkb_acs, "ccle_model_ids": ccle_model_ids or []}
+
         unvalidated_data = self._post_paginated(
             endpoint=endpoint, data=data, page_size=page_size
         )
         validated_data = [DepMapData(**data) for data in unvalidated_data]
         return validated_data
-

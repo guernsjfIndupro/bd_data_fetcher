@@ -1,6 +1,8 @@
-import pandas as pd
 import logging
 from typing import Set
+
+import pandas as pd
+
 from .base_handler import BaseDataHandler
 
 logger = logging.getLogger(__name__)
@@ -16,7 +18,7 @@ class uMapDataHandler(BaseDataHandler):
         Get all replicate sets that have targeted the given protein.
         """
         replicate_sets = self.umap_client._get_replicate_sets()
-        
+
         return [
             replicate_set
             for replicate_set in replicate_sets
@@ -35,31 +37,48 @@ class uMapDataHandler(BaseDataHandler):
         """
         sheet_name = "replicate_set_results"
         columns = [
-            "Replicate Set ID", "Cell Line", "Chemistry", "Target Protein", 
-            "Protein Symbol", "Protein UniProtKB AC", "Log2 FC", "P-value", 
-            "Number of Peptides", "Binder"
+            "Replicate Set ID",
+            "Cell Line",
+            "Chemistry",
+            "Target Protein",
+            "Protein Symbol",
+            "Protein UniProtKB AC",
+            "Log2 FC",
+            "P-value",
+            "Number of Peptides",
+            "Binder",
         ]
-        
+
         # Manage Excel sheet
         self._manage_excel_sheet(file_path, sheet_name, columns)
 
         # Get targeted replicate sets
         replicate_sets = self.get_targeted_replicate_sets(uniprotkb_ac)
-        
+
         if replicate_sets:
             # Transform data to match the sheet column structure
             transformed_data = []
-            
+
             for replicate_set in replicate_sets:
                 # Retrieve all replicate set data
-                analysis_results = self.umap_client._get_analysis_results(replicate_set_id=replicate_set.id)
-                
+                analysis_results = self.umap_client._get_analysis_results(
+                    replicate_set_id=replicate_set.id
+                )
+
                 # Get cell line name
-                cell_line = replicate_set.cell_source.cell_lines[0].name if replicate_set.cell_source.cell_lines else "Unknown"
-                
+                cell_line = (
+                    replicate_set.cell_source.cell_lines[0].name
+                    if replicate_set.cell_source.cell_lines
+                    else "Unknown"
+                )
+
                 # Get target protein info
-                target_protein = replicate_set.target.proteins[0].symbol if replicate_set.target else "Unknown"
-                
+                target_protein = (
+                    replicate_set.target.proteins[0].symbol
+                    if replicate_set.target
+                    else "Unknown"
+                )
+
                 for result in analysis_results:
                     transformed_row = {
                         "Replicate Set ID": replicate_set.id,
@@ -71,19 +90,24 @@ class uMapDataHandler(BaseDataHandler):
                         "Log2 FC": result.log2_fc,
                         "P-value": result.nlog10_pvalue,
                         "Number of Peptides": result.number_of_peptides,
-                        "Binder": replicate_set.binder.display_name if replicate_set.binder else "Unknown"
+                        "Binder": (
+                            replicate_set.binder.display_name
+                            if replicate_set.binder
+                            else "Unknown"
+                        ),
                     }
                     transformed_data.append(transformed_row)
-            
+
             # Create DataFrame with the correct column structure
             transformed_df = pd.DataFrame(transformed_data)
-            
+
             if not transformed_df.empty:
                 # Append to Excel sheet
-                self._append_to_excel_sheet(file_path, sheet_name, transformed_df, columns)
+                self._append_to_excel_sheet(
+                    file_path, sheet_name, transformed_df, columns
+                )
 
         return replicate_sets
-
 
     def get_cell_lines(self, uniprotkb_ac: str) -> Set[str]:
         """
@@ -92,4 +116,7 @@ class uMapDataHandler(BaseDataHandler):
         # TODO: Determine if we should use the name or the ID.
         """
         replicate_sets = self.get_targeted_replicate_sets(uniprotkb_ac)
-        return {replicate_set.cell_source.cell_lines[0].name for replicate_set in replicate_sets}
+        return {
+            replicate_set.cell_source.cell_lines[0].name
+            for replicate_set in replicate_sets
+        }

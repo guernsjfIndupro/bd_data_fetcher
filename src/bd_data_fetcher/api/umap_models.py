@@ -1,7 +1,9 @@
 import enum
-from typing import Optional, List
-from pydantic import BaseModel
 from datetime import datetime
+from typing import List, Optional
+
+from pydantic import BaseModel
+
 
 class OncLineageEnum(enum.Enum):
     LUNG = "Lung"
@@ -40,6 +42,7 @@ class OncLineageEnum(enum.Enum):
     MYELOID = "Myeloid"
     UNKNOWN = "Unknown"
 
+
 # Pydantic deserialzation models
 class CellLineProteomicsData(BaseModel):
     intensity: float
@@ -55,6 +58,7 @@ class CellLineProteomicsData(BaseModel):
     title: Optional[str] = None
     copies_per_cell: float
 
+
 class CellLineData(BaseModel):
     ccle_model_id: Optional[str] = None
     rrid: Optional[str] = None
@@ -64,6 +68,7 @@ class CellLineData(BaseModel):
     onc_primary_disease: Optional[str] = None
     onc_subtype: Optional[str] = None
     experiment_count: int
+
 
 class ReciprocalMicroMapData(BaseModel):
     target_name: str
@@ -75,6 +80,7 @@ class ReciprocalMicroMapData(BaseModel):
     nlog10_pvalue: Optional[float] = None
     proximal_uniprotkb_ac: str
     target_uniprotkb_ac: str
+
 
 class TissueSampleDiaIntensity(BaseModel):
     intensity: float
@@ -92,6 +98,7 @@ class TissueSampleDiaIntensity(BaseModel):
     diagnosis: Optional[str] = None
     tissue_type: Optional[str] = None
 
+
 class RNAGeneExpressionData(BaseModel):
     detailed_category: str
     expression_id: int
@@ -107,12 +114,14 @@ class RNAGeneExpressionData(BaseModel):
     study: str
     is_cancer: bool
 
+
 class ProteomicsNormalExpressionData(BaseModel):
     id: int
     log2_expression: float
     indication: str
     protein_symbol: str
     protein_uniprotkb_ac: str
+
 
 class ExternalProteinExpressionData(BaseModel):
     value: float
@@ -125,6 +134,7 @@ class ExternalProteinExpressionData(BaseModel):
     study_name: str
     paired_sample_group: Optional[str] = None
 
+
 class DepMapData(BaseModel):
     protein_symbol: str
     uniprotkb_ac: str
@@ -135,6 +145,7 @@ class DepMapData(BaseModel):
     tpm_log2: float
     gene_level_copy_number: Optional[float] = None
 
+
 class DepMapResponse(BaseModel):
     current_page: int
     next_page: Optional[int] = None
@@ -142,6 +153,7 @@ class DepMapResponse(BaseModel):
     total_items: int
     total_pages: int
     data: List[DepMapData]
+
 
 # Replicate Sets Models
 class Protein(BaseModel):
@@ -157,12 +169,14 @@ class Protein(BaseModel):
     sequence: Optional[str] = None
     id: int
 
+
 class Target(BaseModel):
     name: str
     description: Optional[str] = None
     proteins: List[Protein]
     type: str
     id: int
+
 
 class ProcessedDataObject(BaseModel):
     object_type: str
@@ -171,10 +185,12 @@ class ProcessedDataObject(BaseModel):
     errors: Optional[str] = None
     id: int
 
+
 class Experiment(BaseModel):
     id: int
     description: str
     raw_data_object_id: Optional[int] = None
+
 
 class Analysis(BaseModel):
     id: int
@@ -188,6 +204,7 @@ class Analysis(BaseModel):
     prominence: str
     replicate_set_id: int
     warning_message: Optional[str] = None
+
 
 class CellLine(BaseModel):
     ccle_model_id: Optional[str] = None
@@ -207,12 +224,14 @@ class CellLine(BaseModel):
     engineering_description: Optional[str] = None
     id: int
 
+
 class CellSource(BaseModel):
     name: str
     id: int
     cell_lines: List[CellLine]
     immune_cell_sample_pools: List = []  # Empty list as per example
-    dissociated_tumor_cells: List = []   # Empty list as per example
+    dissociated_tumor_cells: List = []  # Empty list as per example
+
 
 class Binder(BaseModel):
     entity_registry_id: str
@@ -226,6 +245,7 @@ class Binder(BaseModel):
     created_at: datetime
     updated_at: datetime
     id: int
+
 
 class ReplicateSet(BaseModel):
     description: Optional[str] = None
@@ -248,6 +268,7 @@ class ReplicateSet(BaseModel):
     analyses: List[Analysis]
     cell_source: CellSource
 
+
 class ReplicateSetsResponse(BaseModel):
     current_page: int
     next_page: Optional[int] = None
@@ -255,6 +276,7 @@ class ReplicateSetsResponse(BaseModel):
     total_items: int
     total_pages: int
     data: List[ReplicateSet]
+
 
 # Analysis Results Models
 class AnalysisResult(BaseModel):
@@ -266,6 +288,7 @@ class AnalysisResult(BaseModel):
     analysis_id: int
     analysis: Analysis
     protein: Protein
+
 
 class AnalysisResultsResponse(BaseModel):
     current_page: int

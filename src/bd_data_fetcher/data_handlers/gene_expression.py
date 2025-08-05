@@ -7,14 +7,18 @@ Retrieval of normal gene expression
 
 Retrieval of all gene expression data for a given study
 """
-from ..api.umap_models import RNAGeneExpressionData
+
+import logging
 from functools import lru_cache
 from typing import List
+
 import pandas as pd
-import logging
+
+from ..api.umap_models import RNAGeneExpressionData
 from .base_handler import BaseDataHandler
 
 logger = logging.getLogger(__name__)
+
 
 class GeneExpressionDataHandler(BaseDataHandler):
     """
@@ -37,7 +41,9 @@ class GeneExpressionDataHandler(BaseDataHandler):
     - gene_tumor_normal_ratios
     """
 
-    def _retrieve_normal_gene_expression(self, uniprotkb_ac: str) -> List[RNAGeneExpressionData]:
+    def _retrieve_normal_gene_expression(
+        self, uniprotkb_ac: str
+    ) -> List[RNAGeneExpressionData]:
         """
         Retrieve normal gene expression data for a given uniprotkb_ac.
 
@@ -48,8 +54,14 @@ class GeneExpressionDataHandler(BaseDataHandler):
             A list of RNAGeneExpressionData objects.
         """
         return self._safe_api_call(
-            lambda: [obj for obj in self.umap_client._get_rna_gene_expression_data(uniprotkb_acs=[uniprotkb_ac]) if not obj.is_cancer],
-            uniprotkb_ac=uniprotkb_ac
+            lambda: [
+                obj
+                for obj in self.umap_client._get_rna_gene_expression_data(
+                    uniprotkb_acs=[uniprotkb_ac]
+                )
+                if not obj.is_cancer
+            ],
+            uniprotkb_ac=uniprotkb_ac,
         )
 
     @lru_cache
@@ -59,7 +71,9 @@ class GeneExpressionDataHandler(BaseDataHandler):
         """
         return self.umap_client._get_all_primary_sites()
 
-    def _retrieve_gene_expression_data(self, uniprotkb_ac: str) -> List[RNAGeneExpressionData]:
+    def _retrieve_gene_expression_data(
+        self, uniprotkb_ac: str
+    ) -> List[RNAGeneExpressionData]:
         """
         Retrieve all gene expression data for a given study.
 
@@ -70,8 +84,7 @@ class GeneExpressionDataHandler(BaseDataHandler):
             A list of RNAGeneExpressionData objects.
         """
         return self._safe_api_call(
-            self.umap_client._get_rna_gene_expression_data,
-            uniprotkb_acs=[uniprotkb_ac]
+            self.umap_client._get_rna_gene_expression_data, uniprotkb_acs=[uniprotkb_ac]
         )
 
     def build_normal_gene_expression_sheet(self, uniprotkb_ac: str, file_path: str):
@@ -89,10 +102,10 @@ class GeneExpressionDataHandler(BaseDataHandler):
             file_path=file_path,
             sheet_name=sheet_name,
             data_df=normal_df,
-            group_field='primary_site',
-            value_field='expression_value',
-            gene_field='symbol',
-            gene_column_name='Gene'
+            group_field="primary_site",
+            value_field="expression_value",
+            gene_field="symbol",
+            gene_column_name="Gene",
         )
 
         return normal_df
@@ -104,24 +117,26 @@ class GeneExpressionDataHandler(BaseDataHandler):
         """
         sheet_name = "gene_expression"
         columns = ["Gene", "Expression Value", "Primary Site", "Is Cancer"]
-        
+
         # Manage Excel sheet
         self._manage_excel_sheet(file_path, sheet_name, columns)
 
         # Retrieve gene expression data
         gene_expression = self._retrieve_gene_expression_data(uniprotkb_ac)
         data_df = pd.DataFrame([obj.dict() for obj in gene_expression])
-        
+
         if not data_df.empty:
             # Transform data using common method
             column_mapping = {
                 "Gene": "symbol",
                 "Expression Value": "expression_value",
                 "Primary Site": "primary_site",
-                "Is Cancer": "is_cancer"
+                "Is Cancer": "is_cancer",
             }
-            transformed_df = self._transform_data_to_sheet_format(data_df, column_mapping)
-            
+            transformed_df = self._transform_data_to_sheet_format(
+                data_df, column_mapping
+            )
+
             # Append to Excel sheet
             self._append_to_excel_sheet(file_path, sheet_name, transformed_df, columns)
 
@@ -136,53 +151,57 @@ class GeneExpressionDataHandler(BaseDataHandler):
 
         # Retrieve gene expression data (contains both normal and tumor data)
         all_gene_expression = self._retrieve_gene_expression_data(uniprotkb_ac)
-        
+
         # Convert to DataFrame
         all_df = pd.DataFrame([obj.dict() for obj in all_gene_expression])
-        
+
         if not all_df.empty:
             # Separate normal and tumor data from the same dataset
-            normal_df = all_df[all_df['is_cancer'] == False]
-            tumor_df = all_df[all_df['is_cancer'] == True]
-            
+            normal_df = all_df[all_df["is_cancer"] == False]
+            tumor_df = all_df[all_df["is_cancer"] == True]
+
             if not normal_df.empty and not tumor_df.empty:
                 # Calculate average normal expression per primary site
-                normal_avg = normal_df.groupby('primary_site')['expression_value'].mean()
-                
+                normal_avg = normal_df.groupby("primary_site")[
+                    "expression_value"
+                ].mean()
+
                 # Calculate average tumor expression per primary site
-                tumor_avg = tumor_df.groupby('primary_site')['expression_value'].mean()
-                
+                tumor_avg = tumor_df.groupby("primary_site")["expression_value"].mean()
+
                 # Calculate tumor/normal ratios (tumor - normal)
                 # Only calculate ratios for primary sites that have both normal and tumor data
                 common_sites = set(normal_avg.index) & set(tumor_avg.index)
                 ratios = pd.Series(index=common_sites)
-                
+
                 for site in common_sites:
                     ratios[site] = tumor_avg[site] - normal_avg[site]
-                
+
                 # Get gene symbol
-                gene_symbol = normal_df['symbol'].iloc[0] if not normal_df.empty else ""
-                
+                gene_symbol = normal_df["symbol"].iloc[0] if not normal_df.empty else ""
+
                 # Create a DataFrame with the ratio data for matrix processing
                 ratio_data = []
                 for site, ratio in ratios.items():
-                    ratio_data.append({
-                        'primary_site': site,
-                        'ratio_value': ratio,
-                        'symbol': gene_symbol
-                    })
-                
+                    ratio_data.append(
+                        {
+                            "primary_site": site,
+                            "ratio_value": ratio,
+                            "symbol": gene_symbol,
+                        }
+                    )
+
                 ratio_df = pd.DataFrame(ratio_data)
-                
+
                 # Use the matrix sheet creation method
                 return self._create_matrix_sheet(
                     file_path=file_path,
                     sheet_name=sheet_name,
                     data_df=ratio_df,
-                    group_field='primary_site',
-                    value_field='ratio_value',
-                    gene_field='symbol',
-                    gene_column_name='Gene'
+                    group_field="primary_site",
+                    value_field="ratio_value",
+                    gene_field="symbol",
+                    gene_column_name="Gene",
                 )
 
         return all_df
