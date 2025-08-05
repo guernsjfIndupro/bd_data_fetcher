@@ -207,7 +207,7 @@ class UMapServiceClient:
         self, tissue_type: str, experiment_type: str
     ) -> List[TissueSampleDiaIntensity]:
         """
-        Get proteomics tissue data from the UMap service.
+        Get all proteomics tissue data from the UMap service.
         """
         endpoint = "dia/tissue-sample/tissue-type"
         unvalidated_data = self._post_paginated(

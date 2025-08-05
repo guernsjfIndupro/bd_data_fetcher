@@ -13,6 +13,7 @@ from rich.table import Table
 from ..api.umap_client import UMapServiceClient
 from ..data_handlers.gene_expression import GeneExpressionDataHandler
 from ..data_handlers.umap import uMapDataHandler
+from ..data_handlers.internal_wce import WCEDataHandler
 
 # Initialize Typer app
 app = typer.Typer(
@@ -94,9 +95,10 @@ def gene_expression(
         console.print(table)
         console.print(f"Successfully mapped {len(symbol_mappings)} proteins")
         
-        # Initialize gene expression handler
+        # Initialize data handlers
         gene_handler = GeneExpressionDataHandler()
         umap_handler = uMapDataHandler()
+        wce_handler = WCEDataHandler()
         
         # Generate gene expression data for each protein
         console.print(f"Generating gene expression data for {len(symbol_mappings)} proteins...")
@@ -110,17 +112,18 @@ def gene_expression(
                 # gene_handler.build_gene_expression_sheet(uniprotkb_ac, output)
                 # gene_handler.build_gene_tumor_normal_ratios_sheet(uniprotkb_ac, output)
 
-                # umap_handler.get_umap_data(uniprotkb_ac, output)
+                umap_handler.get_umap_data(uniprotkb_ac, output)
 
                 cell_line_set = umap_handler.get_cell_lines(uniprotkb_ac)
-                console.print(f"Cell lines: {cell_line_set}")
+                console.print(f"Found {len(cell_line_set)} cell lines for {symbol}")
 
-                # Get WCE data for the appropriate cell lines
+                # Generate WCE data sheet
+                if cell_line_set:
+                    wce_data = wce_handler.build_wce_data_sheet(uniprotkb_ac, cell_line_set, output)
+                    console.print(f"Generated WCE data sheet with {len(wce_data)} records for {symbol}")
+                else:
+                    console.print(f"No cell lines found for {symbol}, skipping WCE data generation", style="yellow")
 
-                
-
-
-                
                 console.print(f"Completed processing {symbol}")
                 
             except Exception as e:

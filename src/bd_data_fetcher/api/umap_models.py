@@ -52,7 +52,8 @@ class CellLineProteomicsData(BaseModel):
     cell_line_name: str
     onc_lineage: OncLineageEnum
     onc_subtype: Optional[str] = None
-    title: str
+    title: Optional[str] = None
+    copies_per_cell: float
 
 class CellLineData(BaseModel):
     ccle_model_id: Optional[str] = None
