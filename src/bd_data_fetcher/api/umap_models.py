@@ -125,6 +125,24 @@ class ExternalProteinExpressionData(BaseModel):
     study_name: str
     paired_sample_group: Optional[str] = None
 
+class DepMapData(BaseModel):
+    protein_symbol: str
+    uniprotkb_ac: str
+    cell_line_name: str
+    onc_lineage: str
+    onc_primary_disease: str
+    onc_subtype: Optional[str] = None
+    tpm_log2: float
+    gene_level_copy_number: Optional[float] = None
+
+class DepMapResponse(BaseModel):
+    current_page: int
+    next_page: Optional[int] = None
+    page_size: int
+    total_items: int
+    total_pages: int
+    data: List[DepMapData]
+
 # Replicate Sets Models
 class Protein(BaseModel):
     uniprotkb_ac: str

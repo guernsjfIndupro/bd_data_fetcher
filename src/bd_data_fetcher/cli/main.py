@@ -14,6 +14,7 @@ from ..api.umap_client import UMapServiceClient
 from ..data_handlers.gene_expression import GeneExpressionDataHandler
 from ..data_handlers.umap import uMapDataHandler
 from ..data_handlers.internal_wce import WCEDataHandler
+from ..data_handlers.depmap import DepMapDataHandler
 
 # Initialize Typer app
 app = typer.Typer(
@@ -99,6 +100,7 @@ def gene_expression(
         gene_handler = GeneExpressionDataHandler()
         umap_handler = uMapDataHandler()
         wce_handler = WCEDataHandler()
+        depmap_handler = DepMapDataHandler()
         
         # Generate gene expression data for each protein
         console.print(f"Generating gene expression data for {len(symbol_mappings)} proteins...")
@@ -112,17 +114,22 @@ def gene_expression(
                 # gene_handler.build_gene_expression_sheet(uniprotkb_ac, output)
                 # gene_handler.build_gene_tumor_normal_ratios_sheet(uniprotkb_ac, output)
 
-                umap_handler.get_umap_data(uniprotkb_ac, output)
+                # umap_handler.get_umap_data(uniprotkb_ac, output)
 
                 cell_line_set = umap_handler.get_cell_lines(uniprotkb_ac)
                 console.print(f"Found {len(cell_line_set)} cell lines for {symbol}")
 
                 # Generate WCE data sheet
                 if cell_line_set:
-                    wce_data = wce_handler.build_wce_data_sheet(uniprotkb_ac, cell_line_set, output)
-                    console.print(f"Generated WCE data sheet with {len(wce_data)} records for {symbol}")
+                    # wce_data = wce_handler.build_wce_data_sheet(uniprotkb_ac, cell_line_set, output)
+                    # console.print(f"Generated WCE data sheet with {len(wce_data)} records for {symbol}")
+                    pass
                 else:
                     console.print(f"No cell lines found for {symbol}, skipping WCE data generation", style="yellow")
+
+                # Generate DepMap data sheet
+                depmap_data = depmap_handler.build_dep_map_data_sheet([uniprotkb_ac], file_path=output, cell_line_set=cell_line_set)
+                console.print(f"Generated DepMap data sheet with {len(depmap_data)} records for {symbol}")
 
                 console.print(f"Completed processing {symbol}")
                 

@@ -19,6 +19,7 @@ from .umap_models import (
     ReplicateSetsResponse,
     ReplicateSet,
     AnalysisResult,
+    DepMapData,
 )
 
 logger = logging.getLogger(__name__)
@@ -367,25 +368,40 @@ class UMapServiceClient:
 
     def _get_analysis_results(self, replicate_set_id: int, page_size: int = 1000) -> List[AnalysisResult]:
         """
-        Get analysis results for a specific replicate set from the UMap service using pagination.
+        Get analysis results from the UMap service.
+        """
+        endpoint = f"replicate-sets/{replicate_set_id}/analysis-results"
+        unvalidated_data = self._get_paginated(
+            endpoint=endpoint, page_size=page_size
+        )
+        validated_data = [AnalysisResult(**data) for data in unvalidated_data]
+        return validated_data
+
+    def _get_dep_map_data(
+        self, uniprotkb_acs: List[str], ccle_model_ids: Optional[List[str]] = None, page_size: int = 1000
+    ) -> List[DepMapData]:
+        """
+        Get dep-map data from the UMap service.
         
         Args:
-            replicate_set_id: The ID of the replicate set to get analysis results for
+            uniprotkb_acs: List of UniProtKB accession numbers
+            ccle_model_ids: Optional list of CCLE model IDs to filter by
             page_size: Number of items per page
             
         Returns:
-            List of all AnalysisResult objects across all pages
+            List of DepMapData objects
         """
-        endpoint = "analysis-results/"
-        params = {
-            "replicate_set_id": replicate_set_id,
-            "page_size": page_size
+        endpoint = "cell-line/dep-map"
+        
+        # Prepare request data
+        data = {
+            "uniprotkb_acs": uniprotkb_acs,
+            "ccle_model_ids": ccle_model_ids or []
         }
         
-        # Use the existing _get_paginated helper
-        unvalidated_data = self._get_paginated(endpoint=endpoint, params=params, page_size=page_size)
-        
-        # Convert to AnalysisResult objects
-        validated_data = [AnalysisResult(**data) for data in unvalidated_data]
+        unvalidated_data = self._post_paginated(
+            endpoint=endpoint, data=data, page_size=page_size
+        )
+        validated_data = [DepMapData(**data) for data in unvalidated_data]
         return validated_data
 
