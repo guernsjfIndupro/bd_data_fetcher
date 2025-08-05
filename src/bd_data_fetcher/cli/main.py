@@ -116,6 +116,8 @@ def gene_expression(
                 # gene_handler.build_gene_expression_sheet(uniprotkb_ac, output)
                 # gene_handler.build_gene_tumor_normal_ratios_sheet(uniprotkb_ac, output)
 
+                """
+
                 umap_handler.get_umap_data(uniprotkb_ac, output)
 
                 cell_line_set = umap_handler.get_cell_lines(uniprotkb_ac)
@@ -136,6 +138,9 @@ def gene_expression(
                 # Generate normal proteomics data sheet
                 external_protein_handler.build_normal_proteomics_sheet(uniprotkb_ac, output)
                 console.print(f"Generated normal proteomics data sheet records for {symbol}")
+                """
+                external_protein_handler.build_study_specific_sheet(uniprotkb_ac, output)
+                console.print(f"Generated study specific proteomics data sheet records for {symbol}")
 
                 console.print(f"Completed processing {symbol}")
                 
