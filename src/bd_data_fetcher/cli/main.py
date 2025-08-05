@@ -116,15 +116,15 @@ def gene_expression(
                 # gene_handler.build_gene_expression_sheet(uniprotkb_ac, output)
                 # gene_handler.build_gene_tumor_normal_ratios_sheet(uniprotkb_ac, output)
 
-                # umap_handler.get_umap_data(uniprotkb_ac, output)
+                umap_handler.get_umap_data(uniprotkb_ac, output)
 
                 cell_line_set = umap_handler.get_cell_lines(uniprotkb_ac)
                 console.print(f"Found {len(cell_line_set)} cell lines for {symbol}")
 
                 # Generate WCE data sheet
                 if cell_line_set:
-                    # wce_data = wce_handler.build_wce_data_sheet(uniprotkb_ac, cell_line_set, output)
-                    # console.print(f"Generated WCE data sheet with {len(wce_data)} records for {symbol}")
+                    wce_data = wce_handler.build_wce_data_sheet(uniprotkb_ac, cell_line_set, output)
+                    console.print(f"Generated WCE data sheet with {len(wce_data)} records for {symbol}")
                     pass
                 else:
                     console.print(f"No cell lines found for {symbol}, skipping WCE data generation", style="yellow")

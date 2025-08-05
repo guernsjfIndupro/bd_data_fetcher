@@ -370,9 +370,13 @@ class UMapServiceClient:
         """
         Get analysis results from the UMap service.
         """
-        endpoint = f"replicate-sets/{replicate_set_id}/analysis-results"
+        endpoint = "analysis-results/"
+        params = {
+            "replicate_set_id": replicate_set_id,
+            "page_size": page_size
+        }
         unvalidated_data = self._get_paginated(
-            endpoint=endpoint, page_size=page_size
+            endpoint=endpoint, params=params, page_size=page_size
         )
         validated_data = [AnalysisResult(**data) for data in unvalidated_data]
         return validated_data

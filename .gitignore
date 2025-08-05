@@ -170,3 +170,6 @@ logs/
 *.log
 .env.local
 .env.production 
+
+# Excel files
+*.xlsx
