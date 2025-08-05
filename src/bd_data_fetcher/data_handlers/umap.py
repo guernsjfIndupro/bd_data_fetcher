@@ -1,17 +1,15 @@
-from ..api.umap_client import UMapServiceClient
 import pandas as pd
 import logging
 from typing import Set
+from .base_handler import BaseDataHandler
 
 logger = logging.getLogger(__name__)
 
 
-class uMapDataHandler:
+class uMapDataHandler(BaseDataHandler):
     """
     This class is responsible for handling UMap data.
     """
-    def __init__(self):
-        self.umap_client = UMapServiceClient()
 
     def get_targeted_replicate_sets(self, uniprotkb_ac: str):
         """
@@ -36,34 +34,14 @@ class uMapDataHandler:
         Stores all analysis results data in the Excel sheet, appending to existing data.
         """
         sheet_name = "replicate_set_results"
+        columns = [
+            "Replicate Set ID", "Cell Line", "Chemistry", "Target Protein", 
+            "Protein Symbol", "Protein UniProtKB AC", "Log2 FC", "P-value", 
+            "Number of Peptides", "Binder"
+        ]
         
-        # Check if file exists and what sheets it has
-        existing_sheets = {}
-        try:
-            with pd.ExcelFile(file_path) as xls:
-                for sheet in xls.sheet_names:
-                    existing_sheets[sheet] = pd.read_excel(file_path, sheet_name=sheet)
-        except FileNotFoundError:
-            # File doesn't exist, we'll create it
-            pass
-
-        # Create the sheet if it doesn't exist
-        if sheet_name not in existing_sheets:
-            columns = [
-                "Replicate Set ID", "Cell Line", "Chemistry", "Target Protein", 
-                "Protein Symbol", "Protein UniProtKB AC", "Log2 FC", "P-value", 
-                "Number of Peptides", "Binder"
-            ]
-            new_df = pd.DataFrame(columns=columns)
-            
-            if existing_sheets:
-                # Append to existing file
-                with pd.ExcelWriter(file_path, engine="openpyxl", mode='a') as writer:
-                    new_df.to_excel(writer, sheet_name=sheet_name, index=False)
-            else:
-                # Create new file
-                with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
-                    new_df.to_excel(writer, sheet_name=sheet_name, index=False)
+        # Manage Excel sheet
+        self._manage_excel_sheet(file_path, sheet_name, columns)
 
         # Get targeted replicate sets
         replicate_sets = self.get_targeted_replicate_sets(uniprotkb_ac)
@@ -101,20 +79,8 @@ class uMapDataHandler:
             transformed_df = pd.DataFrame(transformed_data)
             
             if not transformed_df.empty:
-                # Read existing data to get the current row count
-                try:
-                    existing_df = pd.read_excel(file_path, sheet_name=sheet_name)
-                except (FileNotFoundError, ValueError):
-                    existing_df = pd.DataFrame(columns=[
-                        "Replicate Set ID", "Cell Line", "Chemistry", "Target Protein", 
-                        "Protein Symbol", "Protein UniProtKB AC", "Log2 FC", "P-value", 
-                        "Number of Peptides", "Binder"
-                    ])
-                
-                # Append new data to existing sheet
-                with pd.ExcelWriter(file_path, engine="openpyxl", mode='a', if_sheet_exists='overlay') as writer:
-                    start_row = len(existing_df) + 1
-                    transformed_df.to_excel(writer, sheet_name=sheet_name, startrow=start_row, index=False, header=False)
+                # Append to Excel sheet
+                self._append_to_excel_sheet(file_path, sheet_name, transformed_df, columns)
 
         return replicate_sets
 

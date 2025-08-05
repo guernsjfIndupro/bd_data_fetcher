@@ -1,21 +1,19 @@
 """
 DepMap data handler for processing dep-map data.
 """
-from ..api.umap_client import UMapServiceClient
 from ..api.umap_models import DepMapData
 from functools import lru_cache
 from typing import List, Set, Optional
 import pandas as pd
 import logging
+from .base_handler import BaseDataHandler
 
 logger = logging.getLogger(__name__)
 
-class DepMapDataHandler:
+class DepMapDataHandler(BaseDataHandler):
     """
     This class is responsible for handling DepMap data.
     """
-    def __init__(self):
-        self.umap_client = UMapServiceClient()
 
     def get_dep_map_data(self, uniprotkb_acs: List[str], cell_line_set: Set[str]) -> List[DepMapData]:
         """
@@ -55,63 +53,30 @@ class DepMapDataHandler:
         Stores DepMap data in the Excel sheet, appending to existing data.
         """
         sheet_name = "dep_map_data"
+        columns = ["Protein Symbol", "UniProtKB AC", "Cell Line", "Onc Lineage", "Onc Primary Disease", "Onc Subtype", "TPM Log2", "Gene Level Copy Number"]
         
-        # Check if file exists and what sheets it has
-        existing_sheets = {}
-        try:
-            with pd.ExcelFile(file_path) as xls:
-                for sheet in xls.sheet_names:
-                    existing_sheets[sheet] = pd.read_excel(file_path, sheet_name=sheet)
-        except FileNotFoundError:
-            # File doesn't exist, we'll create it
-            pass
-
-        # Create the sheet if it doesn't exist
-        if sheet_name not in existing_sheets:
-            columns = ["Protein Symbol", "UniProtKB AC", "Cell Line", "Onc Lineage", "Onc Primary Disease", "Onc Subtype", "TPM Log2", "Gene Level Copy Number"]
-            new_df = pd.DataFrame(columns=columns)
-            
-            if existing_sheets:
-                # Append to existing file
-                with pd.ExcelWriter(file_path, engine="openpyxl", mode='a') as writer:
-                    new_df.to_excel(writer, sheet_name=sheet_name, index=False)
-            else:
-                # Create new file
-                with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
-                    new_df.to_excel(writer, sheet_name=sheet_name, index=False)
+        # Manage Excel sheet
+        self._manage_excel_sheet(file_path, sheet_name, columns)
 
         # Retrieve DepMap data
         dep_map_data = self.get_dep_map_data(uniprotkb_acs, cell_line_set)
         data_df = pd.DataFrame([obj.dict() for obj in dep_map_data])
         
         if not data_df.empty:
-            # Transform data to match the sheet column structure
-            transformed_data = []
-            for _, row in data_df.iterrows():
-                transformed_row = {
-                    "Protein Symbol": row.get("protein_symbol", ""),
-                    "UniProtKB AC": row.get("uniprotkb_ac", ""),
-                    "Cell Line": row.get("cell_line_name", ""),
-                    "Onc Lineage": row.get("onc_lineage", ""),
-                    "Onc Primary Disease": row.get("onc_primary_disease", ""),
-                    "Onc Subtype": row.get("onc_subtype", ""),
-                    "TPM Log2": row.get("tpm_log2", 0),
-                    "Gene Level Copy Number": row.get("gene_level_copy_number", "")
-                }
-                transformed_data.append(transformed_row)
+            # Transform data using common method
+            column_mapping = {
+                "Protein Symbol": "protein_symbol",
+                "UniProtKB AC": "uniprotkb_ac",
+                "Cell Line": "cell_line_name",
+                "Onc Lineage": "onc_lineage",
+                "Onc Primary Disease": "onc_primary_disease",
+                "Onc Subtype": "onc_subtype",
+                "TPM Log2": "tpm_log2",
+                "Gene Level Copy Number": "gene_level_copy_number"
+            }
+            transformed_df = self._transform_data_to_sheet_format(data_df, column_mapping)
             
-            # Create DataFrame with the correct column structure
-            transformed_df = pd.DataFrame(transformed_data)
-            
-            # Read existing data to get the current row count
-            try:
-                existing_df = pd.read_excel(file_path, sheet_name=sheet_name)
-            except (FileNotFoundError, ValueError):
-                existing_df = pd.DataFrame(columns=["Protein Symbol", "UniProtKB AC", "Cell Line", "Onc Lineage", "Onc Primary Disease", "Onc Subtype", "TPM Log2", "Gene Level Copy Number"])
-            
-            # Append new data to existing sheet
-            with pd.ExcelWriter(file_path, engine="openpyxl", mode='a', if_sheet_exists='overlay') as writer:
-                start_row = len(existing_df) + 1
-                transformed_df.to_excel(writer, sheet_name=sheet_name, startrow=start_row, index=False, header=False)
+            # Append to Excel sheet
+            self._append_to_excel_sheet(file_path, sheet_name, transformed_df, columns)
 
         return data_df

@@ -7,16 +7,16 @@ Retrieval of normal gene expression
 
 Retrieval of all gene expression data for a given study
 """
-from ..api.umap_client import UMapServiceClient
 from ..api.umap_models import RNAGeneExpressionData
 from functools import lru_cache
 from typing import List
 import pandas as pd
 import logging
+from .base_handler import BaseDataHandler
 
 logger = logging.getLogger(__name__)
 
-class GeneExpressionDataHandler:
+class GeneExpressionDataHandler(BaseDataHandler):
     """
     This class is responsible for handling gene expression data.
 
@@ -36,9 +36,6 @@ class GeneExpressionDataHandler:
     - gene_expression
     - gene_tumor_normal_ratios
     """
-    def __init__(self):
-        self.umap_client = UMapServiceClient()
-        pass
 
     def _retrieve_normal_gene_expression(self, uniprotkb_ac: str) -> List[RNAGeneExpressionData]:
         """
@@ -50,11 +47,10 @@ class GeneExpressionDataHandler:
         Returns:
             A list of RNAGeneExpressionData objects.
         """
-        try:
-            return[obj for obj in self.umap_client._get_rna_gene_expression_data(uniprotkb_acs=[uniprotkb_ac]) if not obj.is_cancer]
-        except Exception as e:
-            logger.error(f"Error retrieving normal gene expression for {uniprotkb_ac}: {e}")
-            return []
+        return self._safe_api_call(
+            lambda: [obj for obj in self.umap_client._get_rna_gene_expression_data(uniprotkb_acs=[uniprotkb_ac]) if not obj.is_cancer],
+            uniprotkb_ac=uniprotkb_ac
+        )
 
     @lru_cache
     def get_all_primary_sites(self) -> List[str]:
@@ -73,11 +69,10 @@ class GeneExpressionDataHandler:
         Returns:
             A list of RNAGeneExpressionData objects.
         """
-        try:
-            return self.umap_client._get_rna_gene_expression_data(uniprotkb_acs=[uniprotkb_ac])
-        except Exception as e:
-            logger.error(f"Error retrieving normal gene expression for {uniprotkb_ac}: {e}")
-            return []
+        return self._safe_api_call(
+            self.umap_client._get_rna_gene_expression_data,
+            uniprotkb_acs=[uniprotkb_ac]
+        )
 
     def build_normal_gene_expression_sheet(self, uniprotkb_ac: str, file_path: str):
         """
@@ -85,71 +80,22 @@ class GeneExpressionDataHandler:
         """
         sheet_name = "normal_gene_expression"
 
-        # Check if file exists and what sheets it has
-        existing_sheets = {}
-        try:
-            with pd.ExcelFile(file_path) as xls:
-                for sheet in xls.sheet_names:
-                    existing_sheets[sheet] = pd.read_excel(file_path, sheet_name=sheet)
-        except FileNotFoundError:
-            # File doesn't exist, we'll create it
-            pass
-
-        # Create the sheet if it doesn't exist
-        if sheet_name not in existing_sheets:
-            primary_sites = self.get_all_primary_sites()
-            columns = ["Gene"] + sorted(primary_sites)
-            new_df = pd.DataFrame(columns=columns)
-            
-            if existing_sheets:
-                # Append to existing file
-                with pd.ExcelWriter(file_path, engine="openpyxl", mode='a') as writer:
-                    new_df.to_excel(writer, sheet_name=sheet_name, index=False)
-            else:
-                # Create new file
-                with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
-                    new_df.to_excel(writer, sheet_name=sheet_name, index=False)
-
+        # Retrieve normal gene expression data
         normal_gene_expression = self._retrieve_normal_gene_expression(uniprotkb_ac)
         normal_df = pd.DataFrame([obj.dict() for obj in normal_gene_expression])
-        
-        if not normal_df.empty:
-            # Compute the average expression_value for each primary_site
-            avg_expression = normal_df.groupby('primary_site')['expression_value'].mean()
 
-            # Build a single-row DataFrame: Gene + one column per primary_site
-            gene_symbol = normal_df['symbol'].iloc[0] if not normal_df.empty else ""
-            row_data = {'Gene': gene_symbol}
-            
-            # Read existing sheet to get column structure
-            try:
-                existing_df = pd.read_excel(file_path, sheet_name=sheet_name)
-                all_columns = list(existing_df.columns)
-            except (FileNotFoundError, ValueError):
-                # If sheet doesn't exist or is empty, use default columns
-                primary_sites = self.get_all_primary_sites()
-                all_columns = ["Gene"] + sorted(primary_sites)
-                existing_df = pd.DataFrame(columns=all_columns)
-            
-            # Ensure all columns from the sheet are present in the row_data, fill missing with None
-            avg_expr_dict = avg_expression.to_dict()
-            for col in all_columns:
-                if col == "Gene":
-                    continue  # will set below
-                row_data[col] = avg_expr_dict.get(col, None)
-            
-            row_data['Gene'] = gene_symbol
+        # Use the matrix sheet creation method
+        return self._create_matrix_sheet(
+            file_path=file_path,
+            sheet_name=sheet_name,
+            data_df=normal_df,
+            group_field='primary_site',
+            value_field='expression_value',
+            gene_field='symbol',
+            gene_column_name='Gene'
+        )
 
-            # Reorder row_data to match the columns in the sheet
-            ordered_row = [row_data.get(col, None) for col in all_columns]
-            pivot_df = pd.DataFrame([ordered_row], columns=all_columns)
-            
-            # Append to existing sheet
-            with pd.ExcelWriter(file_path, engine="openpyxl", mode='a', if_sheet_exists='overlay') as writer:
-                start_row = len(existing_df) + 1
-                pivot_df.to_excel(writer, sheet_name=sheet_name, startrow=start_row, index=False, header=False)
-
-        return pd.DataFrame(normal_gene_expression)
+        return normal_df
 
     def build_gene_expression_sheet(self, uniprotkb_ac: str, file_path: str):
         """
@@ -157,61 +103,27 @@ class GeneExpressionDataHandler:
         Stores all gene expression data in the Excel sheet, appending to existing data.
         """
         sheet_name = "gene_expression"
+        columns = ["Gene", "Expression Value", "Primary Site", "Is Cancer"]
         
-        # Check if file exists and what sheets it has
-        existing_sheets = {}
-        try:
-            with pd.ExcelFile(file_path) as xls:
-                for sheet in xls.sheet_names:
-                    existing_sheets[sheet] = pd.read_excel(file_path, sheet_name=sheet)
-        except FileNotFoundError:
-            # File doesn't exist, we'll create it
-            pass
-
-        # Create the sheet if it doesn't exist
-        if sheet_name not in existing_sheets:
-            columns = ["Gene", "Expression Value", "Primary Site", "Is Cancer"]
-            new_df = pd.DataFrame(columns=columns)
-            
-            if existing_sheets:
-                # Append to existing file
-                with pd.ExcelWriter(file_path, engine="openpyxl", mode='a') as writer:
-                    new_df.to_excel(writer, sheet_name=sheet_name, index=False)
-            else:
-                # Create new file
-                with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
-                    new_df.to_excel(writer, sheet_name=sheet_name, index=False)
+        # Manage Excel sheet
+        self._manage_excel_sheet(file_path, sheet_name, columns)
 
         # Retrieve gene expression data
         gene_expression = self._retrieve_gene_expression_data(uniprotkb_ac)
         data_df = pd.DataFrame([obj.dict() for obj in gene_expression])
         
         if not data_df.empty:
-            # Transform data to match the sheet column structure
-            # Map the data fields to the expected columns
-            transformed_data = []
-            for _, row in data_df.iterrows():
-                transformed_row = {
-                    "Gene": row.get("symbol", ""),
-                    "Expression Value": row.get("expression_value", 0),
-                    "Primary Site": row.get("primary_site", ""),
-                    "Is Cancer": row.get("is_cancer", False)
-                }
-                transformed_data.append(transformed_row)
+            # Transform data using common method
+            column_mapping = {
+                "Gene": "symbol",
+                "Expression Value": "expression_value",
+                "Primary Site": "primary_site",
+                "Is Cancer": "is_cancer"
+            }
+            transformed_df = self._transform_data_to_sheet_format(data_df, column_mapping)
             
-            # Create DataFrame with the correct column structure
-            transformed_df = pd.DataFrame(transformed_data)
-            
-            # Read existing data to get the current row count
-            try:
-                existing_df = pd.read_excel(file_path, sheet_name=sheet_name)
-            except (FileNotFoundError, ValueError):
-                existing_df = pd.DataFrame(columns=["Gene", "Expression Value", "Primary Site", "Is Cancer"])
-            
-            # Append new data to existing sheet
-            with pd.ExcelWriter(file_path, engine="openpyxl", mode='a', if_sheet_exists='overlay') as writer:
-                start_row = len(existing_df) + 1
-                transformed_df.to_excel(writer, sheet_name=sheet_name, startrow=start_row, index=False, header=False)
+            # Append to Excel sheet
+            self._append_to_excel_sheet(file_path, sheet_name, transformed_df, columns)
 
         return data_df
 
@@ -221,31 +133,6 @@ class GeneExpressionDataHandler:
         Calculates tumor/normal ratios for each primary site and stores them in the sheet.
         """
         sheet_name = "gene_tumor_normal_ratios"
-        
-        # Check if file exists and what sheets it has
-        existing_sheets = {}
-        try:
-            with pd.ExcelFile(file_path) as xls:
-                for sheet in xls.sheet_names:
-                    existing_sheets[sheet] = pd.read_excel(file_path, sheet_name=sheet)
-        except FileNotFoundError:
-            # File doesn't exist, we'll create it
-            pass
-
-        # Create the sheet if it doesn't exist
-        if sheet_name not in existing_sheets:
-            primary_sites = self.get_all_primary_sites()
-            columns = ["Gene"] + sorted(primary_sites)
-            new_df = pd.DataFrame(columns=columns)
-            
-            if existing_sheets:
-                # Append to existing file
-                with pd.ExcelWriter(file_path, engine="openpyxl", mode='a') as writer:
-                    new_df.to_excel(writer, sheet_name=sheet_name, index=False)
-            else:
-                # Create new file
-                with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
-                    new_df.to_excel(writer, sheet_name=sheet_name, index=False)
 
         # Retrieve gene expression data (contains both normal and tumor data)
         all_gene_expression = self._retrieve_gene_expression_data(uniprotkb_ac)
@@ -276,34 +163,26 @@ class GeneExpressionDataHandler:
                 # Get gene symbol
                 gene_symbol = normal_df['symbol'].iloc[0] if not normal_df.empty else ""
                 
-                # Read existing sheet to get column structure
-                try:
-                    existing_df = pd.read_excel(file_path, sheet_name=sheet_name)
-                    all_columns = list(existing_df.columns)
-                except (FileNotFoundError, ValueError):
-                    # If sheet doesn't exist or is empty, use default columns
-                    primary_sites = self.get_all_primary_sites()
-                    all_columns = ["Gene"] + sorted(primary_sites)
-                    existing_df = pd.DataFrame(columns=all_columns)
+                # Create a DataFrame with the ratio data for matrix processing
+                ratio_data = []
+                for site, ratio in ratios.items():
+                    ratio_data.append({
+                        'primary_site': site,
+                        'ratio_value': ratio,
+                        'symbol': gene_symbol
+                    })
                 
-                # Build row data with ratios
-                row_data = {'Gene': gene_symbol}
-                ratios_dict = ratios.to_dict()
+                ratio_df = pd.DataFrame(ratio_data)
                 
-                # Fill in ratio values for each column
-                for col in all_columns:
-                    if col == "Gene":
-                        continue
-                    # Set to None if the primary site doesn't have both normal and tumor data
-                    row_data[col] = ratios_dict.get(col, None)
-                
-                # Create DataFrame with correct column order
-                ordered_row = [row_data.get(col, None) for col in all_columns]
-                ratios_df = pd.DataFrame([ordered_row], columns=all_columns)
-                
-                # Append to existing sheet
-                with pd.ExcelWriter(file_path, engine="openpyxl", mode='a', if_sheet_exists='overlay') as writer:
-                    start_row = len(existing_df) + 1
-                    ratios_df.to_excel(writer, sheet_name=sheet_name, startrow=start_row, index=False, header=False)
+                # Use the matrix sheet creation method
+                return self._create_matrix_sheet(
+                    file_path=file_path,
+                    sheet_name=sheet_name,
+                    data_df=ratio_df,
+                    group_field='primary_site',
+                    value_field='ratio_value',
+                    gene_field='symbol',
+                    gene_column_name='Gene'
+                )
 
-        return pd.DataFrame(all_gene_expression)
+        return all_df
