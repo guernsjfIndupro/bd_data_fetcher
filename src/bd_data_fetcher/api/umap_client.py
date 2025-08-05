@@ -31,7 +31,9 @@ class UMapServiceClient:
         """
         Initialize the UMap service client.
         """
-        self.base_url = "https://indupro-apps.com/umap-service/api/v1/"
+        # self.base_url = "https://indupro-apps.com/umap-service/api/v1/"
+        self.base_url = "http://localhost:8081/umap-service/api/v1/"
+
 
         if not self.base_url:
             raise ValueError("Base URL must set in UMAP_SERVICE_URL environment variable")
@@ -363,7 +365,7 @@ class UMapServiceClient:
         validated_data = [ReplicateSet(**data) for data in unvalidated_data]
         return validated_data
 
-    def _get_analysis_results(self, replicate_set_id: int, page_size: int = 10) -> List[AnalysisResult]:
+    def _get_analysis_results(self, replicate_set_id: int, page_size: int = 1000) -> List[AnalysisResult]:
         """
         Get analysis results for a specific replicate set from the UMap service using pagination.
         

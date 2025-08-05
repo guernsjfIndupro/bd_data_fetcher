@@ -12,6 +12,7 @@ from rich.table import Table
 
 from ..api.umap_client import UMapServiceClient
 from ..data_handlers.gene_expression import GeneExpressionDataHandler
+from ..data_handlers.umap import uMapDataHandler
 
 # Initialize Typer app
 app = typer.Typer(
@@ -58,7 +59,7 @@ def setup_logging(log_level: str = "INFO", log_file: Optional[str] = None):
 @app.command()
 def gene_expression(
     symbols: list[str] = typer.Argument(..., help="List of protein symbols (e.g., EGFR TP53 BRCA1)"),
-    output: str = typer.Option("gene_expression_data.xlsx", "--output", "-o", help="Output Excel file name"),
+    output: str = typer.Option("output.xlsx", "--output", "-o", help="Output Excel file name"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging"),
 ):
     """
@@ -95,6 +96,7 @@ def gene_expression(
         
         # Initialize gene expression handler
         gene_handler = GeneExpressionDataHandler()
+        umap_handler = uMapDataHandler()
         
         # Generate gene expression data for each protein
         console.print(f"Generating gene expression data for {len(symbol_mappings)} proteins...")
@@ -104,9 +106,20 @@ def gene_expression(
             
             try:
                 # Generate all three types of gene expression data
-                gene_handler.build_normal_gene_expression_sheet(uniprotkb_ac, output)
-                gene_handler.build_gene_expression_sheet(uniprotkb_ac, output)
-                gene_handler.build_gene_tumor_normal_ratios_sheet(uniprotkb_ac, output)
+                # gene_handler.build_normal_gene_expression_sheet(uniprotkb_ac, output)
+                # gene_handler.build_gene_expression_sheet(uniprotkb_ac, output)
+                # gene_handler.build_gene_tumor_normal_ratios_sheet(uniprotkb_ac, output)
+
+                # umap_handler.get_umap_data(uniprotkb_ac, output)
+
+                cell_line_set = umap_handler.get_cell_lines(uniprotkb_ac)
+                console.print(f"Cell lines: {cell_line_set}")
+
+                # Get WCE data for the appropriate cell lines
+
+                
+
+
                 
                 console.print(f"Completed processing {symbol}")
                 

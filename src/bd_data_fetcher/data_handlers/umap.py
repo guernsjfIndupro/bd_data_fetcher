@@ -1,6 +1,7 @@
 from ..api.umap_client import UMapServiceClient
 import pandas as pd
 import logging
+from typing import Set
 
 logger = logging.getLogger(__name__)
 
@@ -22,9 +23,9 @@ class uMapDataHandler:
             replicate_set
             for replicate_set in replicate_sets
             if (
-                isinstance(replicate_set.target_protein, list)
-                and len(replicate_set.target_protein) == 1
-                and replicate_set.target_protein[0] == uniprotkb_ac
+                isinstance(replicate_set.target.proteins, list)
+                and len(replicate_set.target.proteins) == 1
+                and replicate_set.target.proteins[0].uniprotkb_ac == uniprotkb_ac
                 and len(replicate_set.cell_source.cell_lines) > 0
             )
         ]
@@ -33,10 +34,6 @@ class uMapDataHandler:
         """
         Build a UMap analysis results sheet for a given uniprotkb_ac.
         Stores all analysis results data in the Excel sheet, appending to existing data.
-
-        TODO:
-
-        Not using the right target protein symbol
         """
         sheet_name = "replicate_set_results"
         
@@ -55,7 +52,7 @@ class uMapDataHandler:
             columns = [
                 "Replicate Set ID", "Cell Line", "Chemistry", "Target Protein", 
                 "Protein Symbol", "Protein UniProtKB AC", "Log2 FC", "P-value", 
-                "Number of Peptides", "Analysis Status", "Analysis ID"
+                "Number of Peptides", "Binder"
             ]
             new_df = pd.DataFrame(columns=columns)
             
@@ -83,7 +80,7 @@ class uMapDataHandler:
                 cell_line = replicate_set.cell_source.cell_lines[0].name if replicate_set.cell_source.cell_lines else "Unknown"
                 
                 # Get target protein info
-                target_protein = replicate_set.target.name if replicate_set.target else "Unknown"
+                target_protein = replicate_set.target.proteins[0].symbol if replicate_set.target else "Unknown"
                 
                 for result in analysis_results:
                     transformed_row = {
@@ -96,7 +93,7 @@ class uMapDataHandler:
                         "Log2 FC": result.log2_fc,
                         "P-value": result.nlog10_pvalue,
                         "Number of Peptides": result.number_of_peptides,
-                        "Bidner": replicate_set.binder
+                        "Binder": replicate_set.binder.display_name if replicate_set.binder else "Unknown"
                     }
                     transformed_data.append(transformed_row)
             
@@ -111,7 +108,7 @@ class uMapDataHandler:
                     existing_df = pd.DataFrame(columns=[
                         "Replicate Set ID", "Cell Line", "Chemistry", "Target Protein", 
                         "Protein Symbol", "Protein UniProtKB AC", "Log2 FC", "P-value", 
-                        "Number of Peptides", "Analysis Status", "Analysis ID"
+                        "Number of Peptides", "Binder"
                     ])
                 
                 # Append new data to existing sheet
@@ -122,7 +119,7 @@ class uMapDataHandler:
         return replicate_sets
 
 
-    def get_cell_lines(uniprotkb_ac: str):
+    def get_cell_lines(self, uniprotkb_ac: str) -> Set[str]:
         """
         Get all cell lines that have targeted the given protein.
 

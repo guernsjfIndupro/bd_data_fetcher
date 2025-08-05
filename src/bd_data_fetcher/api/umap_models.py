@@ -1,6 +1,7 @@
 import enum
 from typing import Optional, List
 from pydantic import BaseModel
+from datetime import datetime
 
 class OncLineageEnum(enum.Enum):
     LUNG = "Lung"
@@ -134,7 +135,7 @@ class Protein(BaseModel):
     pdb: Optional[str] = None
     pubmeb_ids: Optional[str] = None
     max_drug_targetability: Optional[str] = None
-    sequence: str
+    sequence: Optional[str] = None
     id: int
 
 class Target(BaseModel):
@@ -154,7 +155,7 @@ class ProcessedDataObject(BaseModel):
 class Experiment(BaseModel):
     id: int
     description: str
-    raw_data_object_id: int
+    raw_data_object_id: Optional[int] = None
 
 class Analysis(BaseModel):
     id: int
@@ -194,21 +195,34 @@ class CellSource(BaseModel):
     immune_cell_sample_pools: List = []  # Empty list as per example
     dissociated_tumor_cells: List = []   # Empty list as per example
 
+class Binder(BaseModel):
+    entity_registry_id: str
+    name: str
+    web_url: str
+    display_name: str
+    protein_complex: Optional[str]
+    antigen_targets: Optional[str]
+    type: str
+    benchling_created_date: datetime
+    created_at: datetime
+    updated_at: datetime
+    id: int
+
 class ReplicateSet(BaseModel):
     description: Optional[str] = None
     id: int
     target: Target
-    cell_line: str
+    cell_line: Optional[str] = None
     cell_source_id: int
-    binder: Optional[str] = None
+    binder: Optional[Binder] = None
     chemistry: str
-    processed_data_object: ProcessedDataObject
+    processed_data_object: Optional[ProcessedDataObject] = None
     replicate_column_prefix: str
     control_column_prefix: str
-    num_control_columns: int
-    num_experimental_columns: int
-    valid: bool
-    internal_dev_valid: bool
+    num_control_columns: Optional[int] = None
+    num_experimental_columns: Optional[int] = None
+    valid: Optional[bool] = None
+    internal_dev_valid: Optional[bool] = None
     invalidation_reason: Optional[str] = None
     azure_user_invalidator: Optional[str] = None
     experiment: Experiment
