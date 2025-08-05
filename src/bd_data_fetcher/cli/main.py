@@ -15,6 +15,7 @@ from ..data_handlers.gene_expression import GeneExpressionDataHandler
 from ..data_handlers.umap import uMapDataHandler
 from ..data_handlers.internal_wce import WCEDataHandler
 from ..data_handlers.depmap import DepMapDataHandler
+from ..data_handlers.external_protein_expression import ExternalProteinExpressionDataHandler
 
 # Initialize Typer app
 app = typer.Typer(
@@ -101,6 +102,7 @@ def gene_expression(
         umap_handler = uMapDataHandler()
         wce_handler = WCEDataHandler()
         depmap_handler = DepMapDataHandler()
+        external_protein_handler = ExternalProteinExpressionDataHandler()
         
         # Generate gene expression data for each protein
         console.print(f"Generating gene expression data for {len(symbol_mappings)} proteins...")
@@ -130,6 +132,10 @@ def gene_expression(
                 # Generate DepMap data sheet
                 depmap_data = depmap_handler.build_dep_map_data_sheet([uniprotkb_ac], file_path=output, cell_line_set=cell_line_set)
                 console.print(f"Generated DepMap data sheet with {len(depmap_data)} records for {symbol}")
+
+                # Generate normal proteomics data sheet
+                external_protein_handler.build_normal_proteomics_sheet(uniprotkb_ac, output)
+                console.print(f"Generated normal proteomics data sheet records for {symbol}")
 
                 console.print(f"Completed processing {symbol}")
                 
