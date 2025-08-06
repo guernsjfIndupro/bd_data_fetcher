@@ -14,20 +14,6 @@ logger = logging.getLogger(__name__)
 
 
 class ExternalProteinExpressionDataHandler(BaseDataHandler):
-    """
-    This class is responsible for handling external proteomics data.
-
-    What do i need to do here?
-
-    Two main things
-
-    1. Get the normal proteomics data - This is very straightforward, just use the designated endpoint.
-    2. Get the study specific data -
-    This is a bit more complicated, I need to keep all studies seperated for now.
-    Need to handle the Korean data seperately
-    Need to handle the various different indication naming
-    Need to handle the different Mass spec experiment types.
-    """
 
     def get_normal_proteomics_data(
         self, uniprotkb_ac: str
@@ -44,6 +30,10 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
         """
         Build a normal proteomics sheet for a given uniprotkb_ac.
         Creates a matrix where each row represents a gene and each column represents an indication.
+        
+        TODO: This needs to handle the edge case where
+        the first protein does not have data, it currently
+        generates a sheet with no data exceept for the gene column.
         """
         sheet_name = SheetNames.NORMAL_PROTEOMICS_DATA.value
 
