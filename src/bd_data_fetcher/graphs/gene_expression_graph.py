@@ -1,8 +1,12 @@
 """Gene Expression data visualization graphs."""
 
 import logging
+from collections import defaultdict
 
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
 
 from bd_data_fetcher.data_handlers.utils import SheetNames
 from bd_data_fetcher.graphs.base_graph import BaseGraph
@@ -44,14 +48,8 @@ class GeneExpressionGraph(BaseGraph):
         success = True
 
         # Generate normal gene expression
-        if self._generate_normal_gene_expression(output_dir):
+        if self._generate_normal_gene_heatmap(output_dir):
             logger.info("Generated normal gene expression graph")
-        else:
-            success = False
-
-        # Generate gene expression comparison
-        if self._generate_gene_expression_comparison(output_dir):
-            logger.info("Generated gene expression comparison")
         else:
             success = False
 
@@ -61,16 +59,10 @@ class GeneExpressionGraph(BaseGraph):
         else:
             success = False
 
-        # Generate expression heatmap
-        if self._generate_expression_heatmap(output_dir):
-            logger.info("Generated expression heatmap")
-        else:
-            success = False
-
         return success
 
-    def _generate_normal_gene_expression(self, output_dir: str) -> bool:
-        """Generate expression plot for normal gene expression data.
+    def _generate_normal_gene_heatmap(self, output_dir: str) -> bool:
+        """Generate heatmap of normal gene expression.
 
         Args:
             output_dir: Directory to save the graph
@@ -79,54 +71,102 @@ class GeneExpressionGraph(BaseGraph):
             True if generated successfully, False otherwise
         """
         try:
-            # Placeholder implementation
-            fig, ax = plt.subplots(figsize=(12, 6))
-            ax.set_title("Normal Gene Expression")
-            ax.set_xlabel("Tissue Type")
-            ax.set_ylabel("Expression Level")
+            # Get normal gene expression data
+            df = self.get_sheet_data(SheetNames.NORMAL_GENE_EXPRESSION.value)
+            if df is None or df.empty:
+                logger.error("No normal gene expression data available")
+                return False
 
-            # TODO: Implement actual data processing and plotting
-            # df = self.get_sheet_data(SheetNames.NORMAL_GENE_EXPRESSION.value)
-            # if df is not None:
-            #     tissue_means = df.groupby('tissue_type')['expression_level'].mean()
-            #     ax.bar(tissue_means.index, tissue_means.values)
+            # Check for required columns (matrix format)
+            if 'Gene' not in df.columns:
+                logger.error("Missing 'Gene' column in normal gene expression data")
+                logger.info(f"Available columns: {list(df.columns)}")
+                return False
 
-            return self.save_graph(fig, "normal_gene_expression.png", output_dir)
+            # Get gene names and primary sites
+            gene_names = df['Gene'].dropna().tolist()
+            primary_sites = [col for col in df.columns if col != 'Gene']
+            
+            if not gene_names:
+                logger.error("No gene data found")
+                return False
+                
+            if not primary_sites:
+                logger.error("No primary site data found")
+                return False
+
+            logger.info(f"Creating heatmap for {len(gene_names)} genes across {len(primary_sites)} primary sites")
+
+            # Create the heatmap data matrix
+            heatmap_data = []
+            for _, row in df.iterrows():
+                gene_name = row['Gene']
+                if pd.notna(gene_name):  # Skip rows with no gene name
+                    expression_values = [row.get(site, 0) for site in primary_sites]
+                    heatmap_data.append(expression_values)
+
+            if not heatmap_data:
+                logger.error("No valid expression data found")
+                return False
+
+            heatmap_array = np.array(heatmap_data)
+
+            # Calculate data bounds for color scaling
+            valid_values = heatmap_array[heatmap_array != 0]  # Exclude zeros
+            if len(valid_values) == 0:
+                logger.error("No valid expression values found")
+                return False
+
+            min_bound = valid_values.min()
+            max_bound = valid_values.max()
+            vmax = min(5 * round(max_bound / 5), 20)
+
+            # Create the heatmap
+            plt.figure(figsize=(15, 8))
+            sns.heatmap(
+                heatmap_array,
+                xticklabels=primary_sites,
+                yticklabels=gene_names,
+                vmin=min_bound,
+                vmax=vmax,
+                cmap="Blues",
+                cbar_kws={
+                    "label": "Log2 TPM Expression Value",
+                    "shrink": 0.5,
+                    "aspect": 20,
+                    "pad": 0.05,
+                },
+                linewidths=0.2,
+                linecolor="white",
+                square=True,
+            )
+
+            # Rotate y-labels to horizontal
+            plt.yticks(rotation=0, fontsize=12)
+            # Rotate x-labels for better readability
+            plt.xticks(rotation=45, ha="right", fontsize=12)
+
+            plt.title("Normal Tissue Gene Expression Heatmap", fontsize=16, fontweight="bold")
+            plt.xlabel("Primary Site", fontsize=14, fontweight="bold")
+            plt.ylabel("Gene Symbol", fontsize=14, fontweight="bold")
+            plt.tight_layout()
+
+            # Save the plot
+            filename = "normal_gene_expression_heatmap.png"
+            if not self.save_graph(plt.gcf(), filename, output_dir):
+                logger.error("Failed to save normal gene expression heatmap")
+                return False
+
+            plt.close()
+            logger.info("Successfully generated normal gene expression heatmap")
+            return True
 
         except Exception as e:
-            logger.exception(f"Error generating normal gene expression: {e}")
-            return False
-
-    def _generate_gene_expression_comparison(self, output_dir: str) -> bool:
-        """Generate comparison plot for gene expression data.
-
-        Args:
-            output_dir: Directory to save the graph
-
-        Returns:
-            True if generated successfully, False otherwise
-        """
-        try:
-            # Placeholder implementation
-            fig, ax = plt.subplots(figsize=(10, 6))
-            ax.set_title("Gene Expression Comparison")
-            ax.set_xlabel("Genes")
-            ax.set_ylabel("Expression Level")
-
-            # TODO: Implement actual comparison plotting
-            # df = self.get_sheet_data(SheetNames.GENE_EXPRESSION.value)
-            # if df is not None:
-            #     gene_means = df.groupby('gene')['expression_level'].mean()
-            #     ax.bar(gene_means.index, gene_means.values)
-
-            return self.save_graph(fig, "gene_expression_comparison.png", output_dir)
-
-        except Exception as e:
-            logger.exception(f"Error generating gene expression comparison: {e}")
+            logger.exception(f"Error generating normal gene expression heatmap: {e}")
             return False
 
     def _generate_tumor_normal_ratios(self, output_dir: str) -> bool:
-        """Generate tumor-normal ratio plots.
+        """Generate heatmap of tumor-normal ratios.
 
         Args:
             output_dir: Directory to save the graph
@@ -134,50 +174,4 @@ class GeneExpressionGraph(BaseGraph):
         Returns:
             True if generated successfully, False otherwise
         """
-        try:
-            # Placeholder implementation
-            fig, ax = plt.subplots(figsize=(10, 6))
-            ax.set_title("Tumor-Normal Expression Ratios")
-            ax.set_xlabel("Genes")
-            ax.set_ylabel("Log2 Ratio")
-
-            # TODO: Implement actual ratio plotting
-            # df = self.get_sheet_data(SheetNames.GENE_TUMOR_NORMAL_RATIOS.value)
-            # if df is not None:
-            #     ax.scatter(df['gene'], df['log2_ratio'], alpha=0.6)
-            #     ax.axhline(y=0, color='red', linestyle='--', alpha=0.5)
-
-            return self.save_graph(fig, "tumor_normal_ratios.png", output_dir)
-
-        except Exception as e:
-            logger.exception(f"Error generating tumor-normal ratios: {e}")
-            return False
-
-    def _generate_expression_heatmap(self, output_dir: str) -> bool:
-        """Generate heatmap of gene expression across samples.
-
-        Args:
-            output_dir: Directory to save the graph
-
-        Returns:
-            True if generated successfully, False otherwise
-        """
-        try:
-            # Placeholder implementation
-            fig, ax = plt.subplots(figsize=(14, 8))
-            ax.set_title("Gene Expression Heatmap")
-            ax.set_xlabel("Samples")
-            ax.set_ylabel("Genes")
-
-            # TODO: Implement actual heatmap generation
-            # df = self.get_sheet_data(SheetNames.GENE_EXPRESSION.value)
-            # if df is not None:
-            #     # Create pivot table and heatmap
-            #     pivot_data = df.pivot(index='gene', columns='sample', values='expression_level')
-            #     sns.heatmap(pivot_data, ax=ax, cmap='viridis', center=0)
-
-            return self.save_graph(fig, "gene_expression_heatmap.png", output_dir)
-
-        except Exception as e:
-            logger.exception(f"Error generating expression heatmap: {e}")
-            return False
+        pass
