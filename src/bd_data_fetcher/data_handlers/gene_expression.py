@@ -15,7 +15,8 @@ import pandas as pd
 
 from bd_data_fetcher.api.umap_models import RNAGeneExpressionData
 
-from .base_handler import BaseDataHandler
+from bd_data_fetcher.data_handlers.base_handler import BaseDataHandler
+from bd_data_fetcher.data_handlers.utils import SheetNames
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +92,7 @@ class GeneExpressionDataHandler(BaseDataHandler):
         """
         Build a normal gene expression sheet for a given uniprotkb_ac.
         """
-        sheet_name = "normal_gene_expression"
+        sheet_name = SheetNames.NORMAL_GENE_EXPRESSION.value
 
         # Retrieve normal gene expression data
         normal_gene_expression = self._retrieve_normal_gene_expression(uniprotkb_ac)
@@ -115,7 +116,7 @@ class GeneExpressionDataHandler(BaseDataHandler):
         Build a gene expression sheet for a given study.
         Stores all gene expression data in the Excel sheet, appending to existing data.
         """
-        sheet_name = "gene_expression"
+        sheet_name = SheetNames.GENE_EXPRESSION.value
         columns = ["Gene", "Expression Value", "Primary Site", "Is Cancer"]
 
         # Manage Excel sheet
@@ -147,7 +148,7 @@ class GeneExpressionDataHandler(BaseDataHandler):
         Build a gene tumor normal ratios sheet for a given uniprotkb_ac.
         Calculates tumor/normal ratios for each primary site and stores them in the sheet.
         """
-        sheet_name = "gene_tumor_normal_ratios"
+        sheet_name = SheetNames.GENE_TUMOR_NORMAL_RATIOS.value
 
         # Retrieve gene expression data (contains both normal and tumor data)
         all_gene_expression = self._retrieve_gene_expression_data(uniprotkb_ac)

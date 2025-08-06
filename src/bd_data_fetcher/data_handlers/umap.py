@@ -2,7 +2,8 @@ import logging
 
 import pandas as pd
 
-from .base_handler import BaseDataHandler
+from bd_data_fetcher.data_handlers.base_handler import BaseDataHandler
+from bd_data_fetcher.data_handlers.utils import SheetNames
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ class uMapDataHandler(BaseDataHandler):
         Build a UMap analysis results sheet for a given uniprotkb_ac.
         Stores all analysis results data in the Excel sheet, appending to existing data.
         """
-        sheet_name = "replicate_set_results"
+        sheet_name = SheetNames.UMAP_DATA.value
         columns = [
             "Replicate Set ID",
             "Cell Line",

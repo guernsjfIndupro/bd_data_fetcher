@@ -8,7 +8,8 @@ import pandas as pd
 
 from bd_data_fetcher.api.umap_models import DepMapData
 
-from .base_handler import BaseDataHandler
+from bd_data_fetcher.data_handlers.base_handler import BaseDataHandler
+from bd_data_fetcher.data_handlers.utils import SheetNames
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +64,7 @@ class DepMapDataHandler(BaseDataHandler):
         Build a DepMap data sheet for given uniprotkb_acs.
         Stores DepMap data in the Excel sheet, appending to existing data.
         """
-        sheet_name = "dep_map_data"
+        sheet_name = SheetNames.DEPMAP_DATA.value
         columns = [
             "Protein Symbol",
             "UniProtKB AC",

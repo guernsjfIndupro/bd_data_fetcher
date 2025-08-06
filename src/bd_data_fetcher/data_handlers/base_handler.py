@@ -7,6 +7,7 @@ import logging
 import pandas as pd
 
 from bd_data_fetcher.api.umap_client import UMapServiceClient
+from bd_data_fetcher.data_handlers.utils import SheetNames
 
 logger = logging.getLogger(__name__)
 

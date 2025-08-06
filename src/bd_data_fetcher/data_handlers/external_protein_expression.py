@@ -7,7 +7,8 @@ from bd_data_fetcher.api.umap_models import (
     ProteomicsNormalExpressionData,
 )
 
-from .base_handler import BaseDataHandler
+from bd_data_fetcher.data_handlers.base_handler import BaseDataHandler
+from bd_data_fetcher.data_handlers.utils import SheetNames
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +45,7 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
         Build a normal proteomics sheet for a given uniprotkb_ac.
         Creates a matrix where each row represents a gene and each column represents an indication.
         """
-        sheet_name = "normal_proteomics"
+        sheet_name = SheetNames.NORMAL_PROTEOMICS_DATA.value
 
         # Retrieve normal proteomics data
         normal_proteomics_data = self.get_normal_proteomics_data(uniprotkb_ac)
@@ -81,7 +82,7 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
 
         TODO: This is not ready yet, It needs to be heavily tested.[]
         """
-        sheet_name = "external_proteomics_t_n"
+        sheet_name = SheetNames.EXTERNAL_PROTEOMICS_DATA.value
 
         # Retrieve external proteomics data
         external_proteomics_data = self.get_external_proteomics_data([uniprotkb_ac])

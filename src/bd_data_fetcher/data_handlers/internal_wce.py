@@ -7,7 +7,8 @@ from scipy.interpolate import interp1d, splev, splrep
 
 from bd_data_fetcher.api.umap_models import CellLineProteomicsData
 
-from .base_handler import BaseDataHandler
+from bd_data_fetcher.data_handlers.base_handler import BaseDataHandler
+from bd_data_fetcher.data_handlers.utils import SheetNames
 
 logger = logging.getLogger(__name__)
 
@@ -149,7 +150,7 @@ class WCEDataHandler(BaseDataHandler):
         Build a WCE data sheet for a given uniprotkb_ac and cell line set.
         Stores WCE data in the Excel sheet, appending to existing data.
         """
-        sheet_name = "wce_data"
+        sheet_name = SheetNames.WCE_DATA.value
         columns = [
             "Gene",
             "Cell Line",
@@ -214,7 +215,7 @@ class WCEDataHandler(BaseDataHandler):
             cell_line_names: List of cell line names to process
             file_path: Path to save the Excel file
         """
-        sheet_name = "cell_line_sigmoidal_curves"
+        sheet_name = SheetNames.CELL_LINE_SIGMOIDAL_CURVES.value
 
         # Create columns: Cell Line Name, X/Y indicator, and 500 curve points
         columns = ["Cell_Line_Name", "Is_Y_Axis"] + [f"Point_{i}" for i in range(500)]

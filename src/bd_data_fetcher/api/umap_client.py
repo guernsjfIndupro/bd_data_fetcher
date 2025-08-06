@@ -6,7 +6,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3 import Retry
 
-from .umap_models import (
+from bd_data_fetcher.api.umap_models import (
     AnalysisResult,
     CellLineData,
     CellLineProteomicsData,
