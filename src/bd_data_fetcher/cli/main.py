@@ -119,7 +119,7 @@ def data(
 
         # Generate gene expression data for each protein
         console.print(
-            f"Generating gene expression data for {len(symbol_mappings)} proteins..."
+            f"Generating data for {len(symbol_mappings)} proteins..."
         )
 
         for symbol, uniprotkb_ac in symbol_mappings.items():

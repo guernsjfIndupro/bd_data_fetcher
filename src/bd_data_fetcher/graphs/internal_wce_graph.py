@@ -3,6 +3,9 @@
 import logging
 
 import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
+import numpy as np
 
 from bd_data_fetcher.data_handlers.utils import SheetNames
 from bd_data_fetcher.graphs.base_graph import BaseGraph
@@ -44,7 +47,7 @@ class InternalWCEGraph(BaseGraph):
         success = True
 
         # Generate WCE data distribution
-        if self._generate_wce_data_distribution(output_dir):
+        if self._generate_wce_bar_plots(output_dir):
             logger.info("Generated WCE data distribution graph")
         else:
             success = False
@@ -55,22 +58,15 @@ class InternalWCEGraph(BaseGraph):
         else:
             success = False
 
-        # Generate cell line comparison
-        if self._generate_cell_line_comparison(output_dir):
-            logger.info("Generated cell line comparison")
-        else:
-            success = False
-
-        # Generate intensity heatmap
-        if self._generate_intensity_heatmap(output_dir):
-            logger.info("Generated intensity heatmap")
-        else:
-            success = False
-
         return success
 
-    def _generate_wce_data_distribution(self, output_dir: str) -> bool:
-        """Generate distribution plot of WCE data.
+    def _generate_wce_bar_plots(self, output_dir: str) -> bool:
+        """Generate bar plots of WCE data for each unique gene.
+
+        Creates professional bar plots using Seaborn with:
+        - X-axis: cell line names
+        - Y-axis: average Weight Normalized Intensity Ranking
+        - One plot per unique gene
 
         Args:
             output_dir: Directory to save the graph
@@ -79,25 +75,104 @@ class InternalWCEGraph(BaseGraph):
             True if generated successfully, False otherwise
         """
         try:
-            # Placeholder implementation
-            fig, ax = plt.subplots(figsize=(10, 6))
-            ax.set_title("WCE Data Distribution")
-            ax.set_xlabel("Normalized Intensity")
-            ax.set_ylabel("Frequency")
+            # Get WCE data
+            df = self.get_sheet_data(SheetNames.WCE_DATA.value)
+            if df is None or df.empty:
+                logger.error("No WCE data available")
+                return False
 
-            # TODO: Implement actual data processing and plotting
-            # df = self.get_sheet_data(SheetNames.WCE_DATA.value)
-            # if df is not None:
-            #     ax.hist(df['normalized_intensity'], bins=50, alpha=0.7)
+            # Check for required columns
+            required_columns = ['Gene', 'Cell Line', 'Weight Normalized Intensity Ranking']
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            if missing_columns:
+                logger.error(f"Missing required columns in WCE data: {missing_columns}")
+                logger.info(f"Available columns: {list(df.columns)}")
+                return False
 
-            return self.save_graph(fig, "wce_data_distribution.png", output_dir)
+            # Set Seaborn style for professional appearance
+            sns.set_style("whitegrid")
+            sns.set_palette("husl")
+
+            # Get unique genes
+            unique_genes = df['Gene'].unique()
+            logger.info(f"Found {len(unique_genes)} unique genes for plotting")
+
+            # Ensure Weight Normalized Intensity Ranking is numeric
+            df['Weight Normalized Intensity Ranking'] = pd.to_numeric(
+                df['Weight Normalized Intensity Ranking'], errors='coerce'
+            )
+            
+            # Remove rows with NaN values in the ranking column
+            df = df.dropna(subset=['Weight Normalized Intensity Ranking'])
+            if df.empty:
+                logger.error("No valid numeric data found in Weight Normalized Intensity Ranking column")
+                return False
+
+            # Create plots for each gene
+            for gene in unique_genes:
+                # Filter data for current gene
+                gene_data = df[df['Gene'] == gene]
+                
+                if gene_data.empty:
+                    logger.warning(f"No data found for gene: {gene}")
+                    continue
+
+                # Calculate average Weight Normalized Intensity Ranking by cell line
+                avg_data = gene_data.groupby('Cell Line')['Weight Normalized Intensity Ranking'].mean().reset_index()
+                
+                if avg_data.empty:
+                    logger.warning(f"No valid data for gene: {gene}")
+                    continue
+
+                # Create the plot
+                plt.figure(figsize=(12, 8))
+                
+                # Create bar plot using Seaborn
+                ax = sns.barplot(
+                    data=avg_data,
+                    x='Cell Line',
+                    y='Weight Normalized Intensity Ranking',
+                    palette='viridis',
+                    alpha=0.8
+                )
+
+                # Customize the plot
+                plt.title(f'Average Weight Normalized Intensity Ranking by Cell Line\nGene: {gene}', 
+                         fontsize=16, fontweight='bold', pad=20)
+                plt.xlabel('Cell Line Name', fontsize=12, fontweight='bold')
+                plt.ylabel('Average Weight Normalized Intensity Ranking', fontsize=12, fontweight='bold')
+                
+                # Rotate x-axis labels for better readability
+                plt.xticks(rotation=45, ha='right')
+                
+                # Add value labels on bars
+                for i, v in enumerate(avg_data['Weight Normalized Intensity Ranking']):
+                    ax.text(i, v + (v * 0.01), f'{v:.2f}', 
+                           ha='center', va='bottom', fontsize=10, fontweight='bold')
+
+                # Adjust layout to prevent label cutoff
+                plt.tight_layout()
+                
+                # Save the plot
+                filename = f"wce_bar_plot_{gene.replace(' ', '_').replace('/', '_')}.png"
+                if not self.save_graph(plt.gcf(), filename, output_dir):
+                    logger.error(f"Failed to save plot for gene: {gene}")
+                    return False
+                
+                plt.close()
+
+            logger.info(f"Successfully generated bar plots for {len(unique_genes)} genes")
+            return True
 
         except Exception as e:
-            logger.exception(f"Error generating WCE data distribution: {e}")
+            logger.exception(f"Error generating WCE bar plots: {e}")
             return False
 
     def _generate_sigmoidal_curves(self, output_dir: str) -> bool:
-        """Generate sigmoidal curve plots.
+        """Generate sigmoidal curve plots for each cell line with protein dots.
+
+        Creates professional plots showing sigmoidal curves for each cell line
+        with protein dots plotted along the curve and labels underneath.
 
         Args:
             output_dir: Directory to save the graph
@@ -106,83 +181,139 @@ class InternalWCEGraph(BaseGraph):
             True if generated successfully, False otherwise
         """
         try:
-            # Placeholder implementation
-            fig, ax = plt.subplots(figsize=(12, 8))
-            ax.set_title("Sigmoidal Curves")
-            ax.set_xlabel("Ranking")
-            ax.set_ylabel("Log10 Normalized Intensity")
+            # Get sigmoidal curves data
+            curves_df = self.get_sheet_data(SheetNames.CELL_LINE_SIGMOIDAL_CURVES.value)
+            if curves_df is None or curves_df.empty:
+                logger.error("No sigmoidal curves data available")
+                return False
 
-            # TODO: Implement actual sigmoidal curve plotting
-            # df = self.get_sheet_data(SheetNames.CELL_LINE_SIGMOIDAL_CURVES.value)
-            # if df is not None:
-            #     # Filter for Y-axis data (Is_Y_Axis = 1)
-            #     y_data = df[df['Is_Y_Axis'] == 1]
-            #     for cell_line in y_data['Cell_Line_Name'].unique():
-            #         cell_data = y_data[y_data['Cell_Line_Name'] == cell_line]
-            #         x_points = [f"Point_{i}" for i in range(500)]
-            #         y_points = cell_data[x_points].iloc[0].values
-            #         ax.plot(range(500), y_points, label=cell_line, alpha=0.7)
-            #     ax.legend()
+            # Get WCE data for protein information
+            wce_df = self.get_sheet_data(SheetNames.WCE_DATA.value)
+            if wce_df is None or wce_df.empty:
+                logger.error("No WCE data available for protein plotting")
+                return False
 
-            return self.save_graph(fig, "sigmoidal_curves.png", output_dir)
+            # Check for required columns in curves data
+            required_curve_columns = ['Cell_Line_Name', 'Is_Y_Axis']
+            missing_curve_columns = [col for col in required_curve_columns if col not in curves_df.columns]
+            if missing_curve_columns:
+                logger.error(f"Missing required columns in sigmoidal curves data: {missing_curve_columns}")
+                return False
+
+            # Check for required columns in WCE data
+            required_wce_columns = ['Gene', 'Cell Line', 'Weight Normalized Intensity Ranking']
+            missing_wce_columns = [col for col in required_wce_columns if col not in wce_df.columns]
+            if missing_wce_columns:
+                logger.error(f"Missing required columns in WCE data: {missing_wce_columns}")
+                return False
+
+            # Ensure Weight Normalized Intensity Ranking is numeric
+            wce_df['Weight Normalized Intensity Ranking'] = pd.to_numeric(
+                wce_df['Weight Normalized Intensity Ranking'], errors='coerce'
+            )
+            
+            # Remove rows with NaN values in the ranking column
+            wce_df = wce_df.dropna(subset=['Weight Normalized Intensity Ranking'])
+            if wce_df.empty:
+                logger.error("No valid numeric data found in Weight Normalized Intensity Ranking column")
+                return False
+
+            # Set Seaborn style for professional appearance
+            sns.set_style("whitegrid")
+            sns.set_palette("husl")
+
+            # Get unique cell lines from curves data
+            unique_cell_lines = curves_df['Cell_Line_Name'].unique()
+            logger.info(f"Found {len(unique_cell_lines)} unique cell lines for sigmoidal curves")
+
+            # Create plots for each cell line
+            for cell_line in unique_cell_lines:
+                # Filter curve data for current cell line
+                cell_line_curves = curves_df[curves_df['Cell_Line_Name'] == cell_line]
+                
+                if cell_line_curves.empty:
+                    logger.warning(f"No curve data found for cell line: {cell_line}")
+                    continue
+
+                # Separate X and Y data
+                x_data = cell_line_curves[cell_line_curves['Is_Y_Axis'] == 0]
+                y_data = cell_line_curves[cell_line_curves['Is_Y_Axis'] == 1]
+
+                if x_data.empty or y_data.empty:
+                    logger.warning(f"Incomplete curve data for cell line: {cell_line}")
+                    continue
+
+                # Extract curve points (500 points from Point_0 to Point_499)
+                point_columns = [f"Point_{i}" for i in range(500)]
+                x_points = x_data[point_columns].iloc[0].values
+                y_points = y_data[point_columns].iloc[0].values
+
+                # Filter WCE data for proteins detected in this cell line
+                cell_line_proteins = wce_df[wce_df['Cell Line'] == cell_line]
+                
+                if cell_line_proteins.empty:
+                    logger.warning(f"No protein data found for cell line: {cell_line}")
+                    continue
+
+                # Create the plot
+                plt.figure(figsize=(14, 10))
+                
+                # Plot the sigmoidal curve
+                plt.plot(x_points, y_points, 'b-', linewidth=2, alpha=0.8, label='Sigmoidal Curve')
+                
+                # Plot protein dots along the curve
+                for _, protein in cell_line_proteins.iterrows():
+                    gene_name = protein['Gene']
+                    ranking = protein['Weight Normalized Intensity Ranking']
+                    
+                    # Find the closest point on the curve to the protein's ranking
+                    closest_idx = np.argmin(np.abs(x_points - ranking))
+                    curve_x = x_points[closest_idx]
+                    curve_y = y_points[closest_idx]
+                    
+                    # Plot the protein dot
+                    plt.scatter(curve_x, curve_y, color='red', s=100, alpha=0.8, zorder=5)
+                    
+                    # Add protein label underneath the dot
+                    plt.annotate(
+                        gene_name,
+                        xy=(curve_x, curve_y),
+                        xytext=(curve_x, curve_y - 0.5),  # Position label below dot
+                        ha='center',
+                        va='top',
+                        fontsize=8,
+                        fontweight='bold',
+                        color='darkred',
+                        bbox=dict(boxstyle='round,pad=0.2', facecolor='white', alpha=0.8),
+                        arrowprops=dict(arrowstyle='->', color='darkred', alpha=0.6)
+                    )
+
+                # Customize the plot
+                plt.title(f'Sigmoidal Curve with Protein Detection\nCell Line: {cell_line}', 
+                         fontsize=16, fontweight='bold', pad=20)
+                plt.xlabel('Weight Normalized Intensity Ranking', fontsize=12, fontweight='bold')
+                plt.ylabel('Log10 Normalized Intensity', fontsize=12, fontweight='bold')
+                
+                # Add grid for better readability
+                plt.grid(True, alpha=0.3)
+                
+                # Add legend
+                plt.legend(loc='upper right')
+                
+                # Adjust layout to prevent label cutoff
+                plt.tight_layout()
+                
+                # Save the plot
+                filename = f"sigmoidal_curve_{cell_line.replace(' ', '_').replace('/', '_')}.png"
+                if not self.save_graph(plt.gcf(), filename, output_dir):
+                    logger.error(f"Failed to save sigmoidal curve plot for cell line: {cell_line}")
+                    return False
+                
+                plt.close()
+
+            logger.info(f"Successfully generated sigmoidal curve plots for {len(unique_cell_lines)} cell lines")
+            return True
 
         except Exception as e:
             logger.exception(f"Error generating sigmoidal curves: {e}")
-            return False
-
-    def _generate_cell_line_comparison(self, output_dir: str) -> bool:
-        """Generate comparison plot of cell lines.
-
-        Args:
-            output_dir: Directory to save the graph
-
-        Returns:
-            True if generated successfully, False otherwise
-        """
-        try:
-            # Placeholder implementation
-            fig, ax = plt.subplots(figsize=(10, 6))
-            ax.set_title("Cell Line Comparison")
-            ax.set_xlabel("Cell Lines")
-            ax.set_ylabel("Average Intensity")
-
-            # TODO: Implement actual comparison plotting
-            # df = self.get_sheet_data(SheetNames.WCE_DATA.value)
-            # if df is not None:
-            #     cell_line_means = df.groupby('cell_line_name')['normalized_intensity'].mean()
-            #     ax.bar(cell_line_means.index, cell_line_means.values)
-
-            return self.save_graph(fig, "cell_line_comparison.png", output_dir)
-
-        except Exception as e:
-            logger.exception(f"Error generating cell line comparison: {e}")
-            return False
-
-    def _generate_intensity_heatmap(self, output_dir: str) -> bool:
-        """Generate heatmap of intensity values across cell lines.
-
-        Args:
-            output_dir: Directory to save the graph
-
-        Returns:
-            True if generated successfully, False otherwise
-        """
-        try:
-            # Placeholder implementation
-            fig, ax = plt.subplots(figsize=(14, 8))
-            ax.set_title("Intensity Heatmap")
-            ax.set_xlabel("Cell Lines")
-            ax.set_ylabel("Proteins")
-
-            # TODO: Implement actual heatmap generation
-            # df = self.get_sheet_data(SheetNames.WCE_DATA.value)
-            # if df is not None:
-            #     # Create pivot table and heatmap
-            #     pivot_data = df.pivot(index='protein', columns='cell_line_name', values='normalized_intensity')
-            #     sns.heatmap(pivot_data, ax=ax, cmap='viridis', center=0)
-
-            return self.save_graph(fig, "intensity_heatmap.png", output_dir)
-
-        except Exception as e:
-            logger.exception(f"Error generating intensity heatmap: {e}")
             return False
