@@ -127,13 +127,13 @@ def data(
 
             try:
                 # Generate all three types of gene expression data
-                gene_handler.build_normal_gene_expression_sheet(uniprotkb_ac, output)
-                gene_handler.build_gene_expression_sheet(uniprotkb_ac, output)
-                gene_handler.build_gene_tumor_normal_ratios_sheet(uniprotkb_ac, output)
+                # gene_handler.build_normal_gene_expression_sheet(uniprotkb_ac, output)
+                # gene_handler.build_gene_expression_sheet(uniprotkb_ac, output)
+                # gene_handler.build_gene_tumor_normal_ratios_sheet(uniprotkb_ac, output)
 
 
 
-                umap_handler.get_umap_data(uniprotkb_ac, output)
+                # umap_handler.get_umap_data(uniprotkb_ac, output)
 
                 cell_line_set = umap_handler.get_cell_lines(uniprotkb_ac)
 
@@ -148,17 +148,17 @@ def data(
                     console.print(f"No cell lines found for {symbol}, skipping WCE data generation", style="yellow")
 
                 # Generate DepMap data sheet
-                depmap_data = depmap_handler.build_dep_map_data_sheet([uniprotkb_ac], file_path=output, cell_line_set=cell_line_set)
-                console.print(f"Generated DepMap data sheet with {len(depmap_data)} records for {symbol}")
+                # depmap_data = depmap_handler.build_dep_map_data_sheet([uniprotkb_ac], file_path=output, cell_line_set=cell_line_set)
+                # console.print(f"Generated DepMap data sheet with {len(depmap_data)} records for {symbol}")
 
                 # Generate normal proteomics data sheet
-                external_protein_handler.build_normal_proteomics_sheet(uniprotkb_ac, output)
-                console.print(f"Generated normal proteomics data sheet records for {symbol}")
+                # external_protein_handler.build_normal_proteomics_sheet(uniprotkb_ac, output)
+                # console.print(f"Generated normal proteomics data sheet records for {symbol}")
                 
                 wce_handler.build_cell_line_sigmoidal_curves(cell_line_set, output)
-                external_protein_handler.build_study_specific_sheet(
-                    uniprotkb_ac, output
-                )
+                # external_protein_handler.build_study_specific_sheet(
+                #     uniprotkb_ac, output
+                # )
                 console.print(
                     f"Generated study specific proteomics data sheet records for {symbol}"
                 )

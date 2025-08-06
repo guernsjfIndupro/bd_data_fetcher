@@ -56,6 +56,7 @@ class CellLineProteomicsData(BaseModel):
     onc_subtype: str | None = None
     title: str | None = None
     copies_per_cell: float
+    is_mapped: bool | None = None
 
 
 class CellLineData(BaseModel):

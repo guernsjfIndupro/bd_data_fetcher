@@ -123,20 +123,19 @@ class WCEDataHandler(BaseDataHandler):
         Retrieve WCE data for a given uniprotkb_ac and cell line set.
 
         Args:
-            cell_line_set: Set of cell line names to filter by
+            cell_line_set: Set of cell line names to check mapping status
             uniprotkb_ac: The uniprotkb_ac of the protein to retrieve WCE data for
 
         Returns:
-            A list of CellLineProteomicsData objects filtered by the cell line set
+            A list of CellLineProteomicsData objects with mapping indicator
         """
         try:
             wce_data = self.umap_client._get_proteomics_cell_line_data(
                 uniprotkb_ac=uniprotkb_ac
             )
-            # Filter the data to only include the cell lines in the cell line set
-            wce_data = [
-                data for data in wce_data if data.cell_line_name in cell_line_set
-            ]
+            # Add mapping indicator to each data point
+            for data in wce_data:
+                data.is_mapped = data.cell_line_name in cell_line_set
 
             return wce_data
         except Exception as e:
@@ -160,6 +159,7 @@ class WCEDataHandler(BaseDataHandler):
             "Experiment Type",
             "Title",
             "Copies Per Cell",
+            "Is Mapped",
         ]
 
         # Manage Excel sheet
@@ -167,9 +167,17 @@ class WCEDataHandler(BaseDataHandler):
 
         # Retrieve WCE data
         wce_data = self.get_wce_data(cell_line_set, uniprotkb_ac)
-        data_df = pd.DataFrame([obj.dict() for obj in wce_data])
+        data_df = pd.DataFrame([obj.dict(exclude_none=False) for obj in wce_data])
 
         if not data_df.empty:
+            # Convert onc_lineage enum values to their string values
+            if 'onc_lineage' in data_df.columns:
+                data_df['onc_lineage'] = data_df['onc_lineage'].apply(lambda x: x.value if hasattr(x, 'value') else x)
+            
+            # Ensure is_mapped column exists and has proper values
+            if 'is_mapped' not in data_df.columns:
+                data_df['is_mapped'] = False
+            
             # Transform data using common method
             column_mapping = {
                 "Gene": "symbol",
@@ -180,6 +188,7 @@ class WCEDataHandler(BaseDataHandler):
                 "Experiment Type": "experiment_type",
                 "Title": "title",
                 "Copies Per Cell": "copies_per_cell",
+                "Is Mapped": "is_mapped",
             }
             transformed_df = self._transform_data_to_sheet_format(
                 data_df, column_mapping

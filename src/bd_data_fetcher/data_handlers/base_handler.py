@@ -117,6 +117,8 @@ class BaseDataHandler:
                 if df_col in row:
                     transformed_row[sheet_col] = row[df_col]
                 # Handle missing columns with appropriate defaults
+                elif df_col == "is_mapped":
+                    transformed_row[sheet_col] = False
                 elif isinstance(row.get(df_col, None), bool):
                     transformed_row[sheet_col] = False
                 elif isinstance(row.get(df_col, None), int | float):

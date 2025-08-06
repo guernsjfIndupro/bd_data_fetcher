@@ -97,6 +97,8 @@ class ExcelGraphAnalyzer:
         table.add_column("Sheets", style="yellow")
         table.add_column("Supported Graphs", style="blue")
 
+        # TODO: This is a placeholder for the actual graphs that will be generated.
+
         for data_type, sheets in data_type_mapping.items():
             graph_class = self.graph_generators[data_type]
             graph_class(str(self.excel_file_path))
@@ -139,6 +141,12 @@ class ExcelGraphAnalyzer:
         total_count = len(data_type_mapping)
 
         for data_type in data_type_mapping.keys():
+            # Only process WCE-related graphs; skip others
+            wce_graph_types = {"wce_data", "cell_line_sigmoidal_curves"}
+            if data_type not in wce_graph_types:
+                console.print(f"[yellow]Skipping non-WCE graph: {data_type}[/yellow]")
+                continue
+
             console.print(f"\n[cyan]Processing {data_type}...[/cyan]")
 
             try:
@@ -180,9 +188,16 @@ class ExcelGraphAnalyzer:
                 console.print(f"[red]✗ Unsupported data type: {data_type}[/red]")
                 continue
 
+            # Only process WCE-related graphs; skip others
+            wce_graph_types = {"wce_data", "cell_line_sigmoidal_curves"}
+            if data_type not in wce_graph_types:
+                console.print(f"[yellow]Skipping non-WCE graph: {data_type}[/yellow]")
+                continue
+
             console.print(f"\n[cyan]Processing {data_type}...[/cyan]")
 
             try:
+
                 graph_class = self.graph_generators[data_type]
                 graph_instance = graph_class(str(self.excel_file_path))
 
