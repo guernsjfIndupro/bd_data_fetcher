@@ -223,7 +223,31 @@ class WCEDataHandler(BaseDataHandler):
         # Manage Excel sheet
         self._manage_excel_sheet(file_path, sheet_name, columns)
 
-        for cell_line_name in cell_line_names:
+        # Check which cell lines already exist in the sheet
+        existing_cell_lines = set()
+        try:
+            existing_df = pd.read_excel(file_path, sheet_name=sheet_name)
+            if not existing_df.empty and 'Cell_Line_Name' in existing_df.columns:
+                existing_cell_lines = set(existing_df['Cell_Line_Name'].unique())
+                logger.info(f"Found {len(existing_cell_lines)} existing cell lines in sheet: {existing_cell_lines}")
+        except (FileNotFoundError, ValueError, KeyError):
+            # Sheet doesn't exist or is empty, no existing cell lines
+            pass
+
+        # Filter out cell lines that already exist
+        new_cell_lines = [name for name in cell_line_names if name not in existing_cell_lines]
+        skipped_cell_lines = [name for name in cell_line_names if name in existing_cell_lines]
+        
+        if skipped_cell_lines:
+            logger.info(f"Skipping {len(skipped_cell_lines)} cell lines that already exist: {skipped_cell_lines}")
+        
+        if not new_cell_lines:
+            logger.info("All cell lines already exist in the sheet. No new curves to generate.")
+            return
+
+        logger.info(f"Processing {len(new_cell_lines)} new cell lines: {new_cell_lines}")
+
+        for cell_line_name in new_cell_lines:
             logger.info(f"Processing sigmoidal curve for cell line: {cell_line_name}")
 
             try:
@@ -277,5 +301,5 @@ class WCEDataHandler(BaseDataHandler):
                 logger.exception(f"Error processing cell line {cell_line_name}: {e}")
                 continue
 
-        logger.info(f"Completed sigmoidal curve generation for {len(cell_line_names)} cell lines")
+        logger.info(f"Completed sigmoidal curve generation for {len(new_cell_lines)} new cell lines")
         logger.info(f"Cache status - Cell line data: {len(self._cell_line_data_cache)}, Sigmoidal curves: {len(self._sigmoidal_curves_cache)}")
