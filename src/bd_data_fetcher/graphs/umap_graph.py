@@ -3,6 +3,8 @@
 import logging
 
 import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
 
 from bd_data_fetcher.data_handlers.utils import SheetNames
 from bd_data_fetcher.graphs.base_graph import BaseGraph
@@ -43,28 +45,22 @@ class UMapGraph(BaseGraph):
 
         success = True
 
-        # Generate cell line targeting distribution
-        if self._generate_cell_line_targeting_distribution(output_dir):
-            logger.info("Generated cell line targeting distribution graph")
-        else:
-            success = False
-
-        # Generate protein targeting heatmap
-        if self._generate_protein_targeting_heatmap(output_dir):
-            logger.info("Generated protein targeting heatmap")
-        else:
-            success = False
-
         # Generate cell line comparison
-        if self._generate_cell_line_comparison(output_dir):
+        if self._generate_volcano_plots(output_dir):
             logger.info("Generated cell line comparison")
         else:
             success = False
 
         return success
 
-    def _generate_cell_line_targeting_distribution(self, output_dir: str) -> bool:
-        """Generate distribution plot of cell line targeting data.
+    def _generate_volcano_plots(self, output_dir: str) -> bool:
+        """Generate volcano plots of UMap data.
+
+        Creates professional volcano plots showing:
+        - X-axis: Log2 Fold Change
+        - Y-axis: -log10 P-value
+        - Significant points highlighted
+        - Chemistry, cell line, and target protein in title
 
         Args:
             output_dir: Directory to save the graph
@@ -73,85 +69,161 @@ class UMapGraph(BaseGraph):
             True if generated successfully, False otherwise
         """
         try:
-            # Placeholder implementation
-            fig, ax = plt.subplots(figsize=(10, 6))
-            ax.set_title("Cell Line Targeting Distribution")
-            ax.set_xlabel("Number of Proteins Targeted")
-            ax.set_ylabel("Number of Cell Lines")
+            # Get UMap data
+            df = self.get_sheet_data(SheetNames.UMAP_DATA.value)
+            if df is None or df.empty:
+                logger.error("No UMap data available")
+                return False
 
-            # TODO: Implement actual data processing and plotting
-            # df = self.get_sheet_data(SheetNames.CELL_LINE_TARGETING.value)
-            # if df is not None:
-            #     targeting_counts = df.groupby('cell_line_name').size()
-            #     ax.hist(targeting_counts.values, bins=20, alpha=0.7)
+            # Check for required columns
+            required_columns = ['Log2 FC', 'P-value', 'Cell Line', 'Chemistry', 'Target Protein', 'Protein Symbol']
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            if missing_columns:
+                logger.error(f"Missing required columns in UMap data: {missing_columns}")
+                logger.info(f"Available columns: {list(df.columns)}")
+                return False
 
-            return self.save_graph(fig, "cell_line_targeting_distribution.png", output_dir)
+            # Ensure numeric columns are properly formatted
+            df['Log2 FC'] = pd.to_numeric(df['Log2 FC'], errors='coerce')
+            df['P-value'] = pd.to_numeric(df['P-value'], errors='coerce')
+
+            # Remove rows with NaN values
+            df = df.dropna(subset=['Log2 FC', 'P-value'])
+            if df.empty:
+                logger.error("No valid numeric data found in Log2 FC or P-value columns")
+                return False
+
+            # Get unique replicate set IDs
+            unique_replicate_sets = df['Replicate Set ID'].unique()
+
+            logger.info(f"Creating volcano plots for {len(unique_replicate_sets)} replicate sets")
+
+            # Set Seaborn style for professional medical appearance
+            sns.set_style("whitegrid")
+            sns.set_palette(["#45cfe0"])  # Use the specified light blue color
+
+            # Create volcano plot for each replicate set ID
+            for replicate_set_id in unique_replicate_sets:
+                # Filter data for this replicate set
+                plot_data = df[df['Replicate Set ID'] == replicate_set_id]
+
+                if plot_data.empty:
+                    logger.warning(f"No data found for replicate set ID: {replicate_set_id}")
+                    continue
+
+                # Get metadata for this replicate set (should be consistent within a replicate set)
+                cell_line = plot_data['Cell Line'].iloc[0]
+                chemistry = plot_data['Chemistry'].iloc[0]
+                target_protein = plot_data['Target Protein'].iloc[0]
+
+                # Get target proteins from the UMap data
+                target_proteins = plot_data['Target Protein'].unique()
+
+                # Create the volcano plot
+                plt.figure(figsize=(12, 10))
+
+                # Plot all points
+                plt.scatter(
+                    plot_data['Log2 FC'],
+                    plot_data['P-value'],
+                    alpha=0.6,
+                    color='#45cfe0',
+                    s=50,
+                    edgecolors='#2a9bb3',
+                    linewidth=0.5
+                )
+
+                # Highlight target proteins
+                target_points = plot_data[plot_data['Protein Symbol'].isin(target_proteins)]
+
+                if not target_points.empty:
+                    plt.scatter(
+                        target_points['Log2 FC'],
+                        target_points['P-value'],
+                        color='#ff6b6b',  # Red for target proteins
+                        s=80,
+                        alpha=0.8,
+                        edgecolors='#d63031',
+                        linewidth=1,
+                        zorder=5
+                    )
+
+                    # Add labels for target proteins
+                    for _, point in target_points.iterrows():
+                        plt.annotate(
+                            point['Protein Symbol'],
+                            xy=(point['Log2 FC'], point['P-value']),
+                            xytext=(5, 5),
+                            textcoords='offset points',
+                            fontsize=8,
+                            fontweight='bold',
+                            color='#2a9bb3',
+                            bbox={
+                                "boxstyle": 'round,pad=0.3',
+                                "facecolor": 'white',
+                                "edgecolor": '#45cfe0',
+                                "alpha": 0.8
+                            },
+                            arrowprops={
+                                "arrowstyle": '->',
+                                "color": '#45cfe0',
+                                "alpha": 0.7
+                            }
+                        )
+
+                # Customize the plot
+                plt.title(
+                    f'Volcano Plot: {target_protein} in {cell_line}\nChemistry: {chemistry}\nReplicate Set: {replicate_set_id}',
+                    fontsize=16,
+                    fontweight='bold',
+                    pad=25
+                )
+                plt.xlabel('Log2 Fold Change', fontsize=14, fontweight='bold')
+                plt.ylabel('-log10 P-value', fontsize=14, fontweight='bold')
+
+                # Set axis limits with some padding
+                x_min, x_max = plot_data['Log2 FC'].min(), plot_data['Log2 FC'].max()
+                _y_min, y_max = plot_data['P-value'].min(), plot_data['P-value'].max()
+
+                plt.xlim(x_min - 0.5, x_max + 0.5)
+                plt.ylim(0, y_max + 0.5)
+
+                # Add grid
+                plt.grid(True, alpha=0.3)
+
+                # Add statistics text
+                total_points = len(plot_data)
+                target_count = len(target_points)
+                plt.figtext(
+                    0.02, 0.02,
+                    f'Total proteins: {total_points}\nTarget proteins: {target_count}',
+                    fontsize=10,
+                    bbox={
+                        "boxstyle": 'round,pad=0.5',
+                        "facecolor": 'white',
+                        "edgecolor": '#45cfe0',
+                        "alpha": 0.8
+                    }
+                )
+
+                plt.tight_layout()
+
+                # Save the plot
+                safe_cell_line = cell_line.replace(' ', '_').replace('/', '_')
+                safe_chemistry = chemistry.replace(' ', '_').replace('/', '_')
+                safe_replicate_id = str(replicate_set_id).replace(' ', '_').replace('/', '_')
+                filename = f"volcano_plot_{target_protein}_{safe_cell_line}_{safe_chemistry}_{safe_replicate_id}.png"
+
+                if not self.save_graph(plt.gcf(), filename, output_dir):
+                    logger.error(f"Failed to save volcano plot for replicate set {replicate_set_id}")
+                    return False
+
+                plt.close()
+                logger.info(f"Generated volcano plot for replicate set {replicate_set_id} ({cell_line} - {chemistry} - {target_protein})")
+
+            logger.info("Successfully generated all volcano plots")
+            return True
 
         except Exception as e:
-            logger.exception(f"Error generating cell line targeting distribution: {e}")
-            return False
-
-    def _generate_protein_targeting_heatmap(self, output_dir: str) -> bool:
-        """Generate heatmap of protein targeting across cell lines.
-
-        Args:
-            output_dir: Directory to save the graph
-
-        Returns:
-            True if generated successfully, False otherwise
-        """
-        try:
-            # Placeholder implementation
-            fig, ax = plt.subplots(figsize=(14, 8))
-            ax.set_title("Protein Targeting Heatmap")
-            ax.set_xlabel("Cell Lines")
-            ax.set_ylabel("Proteins")
-
-            # TODO: Implement actual heatmap generation
-            # df = self.get_sheet_data(SheetNames.CELL_LINE_TARGETING.value)
-            # if df is not None:
-            #     # Create pivot table and heatmap
-            #     pivot_data = df.pivot_table(
-            #         index='protein',
-            #         columns='cell_line_name',
-            #         values='targeted',
-            #         aggfunc='count',
-            #         fill_value=0
-            #     )
-            #     sns.heatmap(pivot_data, ax=ax, cmap='YlOrRd', annot=False)
-
-            return self.save_graph(fig, "protein_targeting_heatmap.png", output_dir)
-
-        except Exception as e:
-            logger.exception(f"Error generating protein targeting heatmap: {e}")
-            return False
-
-    def _generate_cell_line_comparison(self, output_dir: str) -> bool:
-        """Generate comparison plot of cell lines.
-
-        Args:
-            output_dir: Directory to save the graph
-
-        Returns:
-            True if generated successfully, False otherwise
-        """
-        try:
-            # Placeholder implementation
-            fig, ax = plt.subplots(figsize=(12, 6))
-            ax.set_title("Cell Line Targeting Comparison")
-            ax.set_xlabel("Cell Lines")
-            ax.set_ylabel("Number of Proteins Targeted")
-
-            # TODO: Implement actual comparison plotting
-            # df = self.get_sheet_data(SheetNames.CELL_LINE_TARGETING.value)
-            # if df is not None:
-            #     cell_line_counts = df.groupby('cell_line_name').size().sort_values(ascending=False)
-            #     ax.bar(range(len(cell_line_counts)), cell_line_counts.values)
-            #     ax.set_xticks(range(len(cell_line_counts)))
-            #     ax.set_xticklabels(cell_line_counts.index, rotation=45)
-
-            return self.save_graph(fig, "cell_line_comparison.png", output_dir)
-
-        except Exception as e:
-            logger.exception(f"Error generating cell line comparison: {e}")
+            logger.exception(f"Error generating volcano plots: {e}")
             return False

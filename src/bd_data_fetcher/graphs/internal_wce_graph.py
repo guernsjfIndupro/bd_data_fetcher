@@ -3,9 +3,9 @@
 import logging
 
 import matplotlib.pyplot as plt
-import seaborn as sns
-import pandas as pd
 import numpy as np
+import pandas as pd
+import seaborn as sns
 
 from bd_data_fetcher.data_handlers.utils import SheetNames
 from bd_data_fetcher.graphs.base_graph import BaseGraph
@@ -101,7 +101,7 @@ class InternalWCEGraph(BaseGraph):
             df['Weight Normalized Intensity Ranking'] = pd.to_numeric(
                 df['Weight Normalized Intensity Ranking'], errors='coerce'
             )
-            
+
             # Remove rows with NaN values in the ranking column
             df = df.dropna(subset=['Weight Normalized Intensity Ranking'])
             if df.empty:
@@ -109,7 +109,7 @@ class InternalWCEGraph(BaseGraph):
                 return False
 
             # Filter to only include mapped proteins
-            df = df[df['Is Mapped'] == True]
+            df = df[df['Is Mapped'] is True]
             if df.empty:
                 logger.error("No mapped proteins found in WCE data")
                 return False
@@ -122,26 +122,26 @@ class InternalWCEGraph(BaseGraph):
             for gene in unique_genes:
                 # Filter data for current gene
                 gene_data = df[df['Gene'] == gene]
-                
+
                 if gene_data.empty:
                     logger.warning(f"No data found for gene: {gene}")
                     continue
 
                 # Calculate average Weight Normalized Intensity Ranking by cell line
                 avg_data = gene_data.groupby(['Cell Line', 'Onc Lineage'])['Weight Normalized Intensity Ranking'].mean().reset_index()
-                
+
                 if avg_data.empty:
                     logger.warning(f"No valid data for gene: {gene}")
                     continue
 
                 # Sort by onc_lineage and then by cell line name
                 avg_data = avg_data.sort_values(['Onc Lineage', 'Cell Line'])
-                
+
                 # Create the plot
                 plt.figure(figsize=(16, 10))
-                
+
                 # Create bar plot using Seaborn with different colors per onc_lineage
-                ax = sns.barplot(
+                sns.barplot(
                     data=avg_data,
                     x='Cell Line',
                     y='Weight Normalized Intensity Ranking',
@@ -151,33 +151,33 @@ class InternalWCEGraph(BaseGraph):
                 )
 
                 # Customize the plot for medical professional appearance
-                plt.title(f'Protein Expression Analysis\nGene: {gene}', 
+                plt.title(f'Protein Expression Analysis\nGene: {gene}',
                          fontsize=18, fontweight='bold', pad=25)
                 plt.xlabel('Cell Line', fontsize=14, fontweight='bold')
                 plt.ylabel('Weight Normalized Intensity Ranking', fontsize=14, fontweight='bold')
-                
+
                 # Set Y-axis range from 0 to 1000
                 plt.ylim(0, 1000)
-                
+
                 # Rotate x-axis labels for better readability
                 plt.xticks(rotation=45, ha='right', fontsize=12)
                 plt.yticks(fontsize=12)
-                
+
                 # Add legend for onc_lineage colors
                 plt.legend(title='Onc Lineage', loc='upper right', fontsize=10)
-                
+
                 # Add grid for better readability
                 plt.grid(True, alpha=0.3, linestyle='--')
 
                 # Adjust layout to prevent label cutoff
                 plt.tight_layout()
-                
+
                 # Save the plot
                 filename = f"wce_bar_plot_{gene.replace(' ', '_').replace('/', '_')}.png"
                 if not self.save_graph(plt.gcf(), filename, output_dir):
                     logger.error(f"Failed to save plot for gene: {gene}")
                     return False
-                
+
                 plt.close()
 
             logger.info(f"Successfully generated bar plots for {len(unique_genes)} genes")
@@ -230,7 +230,7 @@ class InternalWCEGraph(BaseGraph):
             wce_df['Weight Normalized Intensity Ranking'] = pd.to_numeric(
                 wce_df['Weight Normalized Intensity Ranking'], errors='coerce'
             )
-            
+
             # Remove rows with NaN values in the ranking column
             wce_df = wce_df.dropna(subset=['Weight Normalized Intensity Ranking'])
             if wce_df.empty:
@@ -249,7 +249,7 @@ class InternalWCEGraph(BaseGraph):
             for cell_line in unique_cell_lines:
                 # Filter curve data for current cell line
                 cell_line_curves = curves_df[curves_df['Cell_Line_Name'] == cell_line]
-                
+
                 if cell_line_curves.empty:
                     logger.warning(f"No curve data found for cell line: {cell_line}")
                     continue
@@ -269,7 +269,7 @@ class InternalWCEGraph(BaseGraph):
 
                 # Filter WCE data for proteins detected in this cell line
                 cell_line_proteins = wce_df[wce_df['Cell Line'] == cell_line]
-                
+
                 if cell_line_proteins.empty:
                     logger.warning(f"No protein data found for cell line: {cell_line}")
                     continue
@@ -280,28 +280,28 @@ class InternalWCEGraph(BaseGraph):
 
                 # Create the plot
                 plt.figure(figsize=(16, 12))
-                
+
                 # Plot the sigmoidal curve
                 plt.plot(x_points, y_points, 'b-', linewidth=3, alpha=0.9, label='Sigmoidal Curve')
-                
+
                 # Plot protein dots along the curve
                 for _, protein in protein_averages.iterrows():
                     gene_name = protein['Gene']
                     ranking = protein['Weight Normalized Intensity Ranking']
-                    
+
                     # Find the closest point on the curve to the protein's ranking
                     closest_idx = np.argmin(np.abs(x_points - ranking))
                     curve_x = x_points[closest_idx]
                     curve_y = y_points[closest_idx]
-                    
+
                     # Plot the protein dot
                     plt.scatter(curve_x, curve_y, color='#45cfe0', s=150, alpha=0.9, zorder=5, edgecolors='#2a9bb3', linewidth=1)
-                    
+
                     # Calculate label position to avoid overlap
                     label_offset = 0.3
                     label_x = curve_x
                     label_y = curve_y - label_offset
-                    
+
                     # Add protein label with improved styling
                     plt.annotate(
                         gene_name,
@@ -312,44 +312,44 @@ class InternalWCEGraph(BaseGraph):
                         fontsize=10,
                         fontweight='bold',
                         color='#2a9bb3',
-                        bbox=dict(
-                            boxstyle='round,pad=0.3', 
-                            facecolor='white', 
-                            alpha=0.95,
-                            edgecolor='#45cfe0',
-                            linewidth=1
-                        ),
-                        arrowprops=dict(
-                            arrowstyle='->', 
-                            color='#45cfe0', 
-                            alpha=0.8,
-                            lw=1.5,
-                            shrinkA=5,
-                            shrinkB=5
-                        )
+                        bbox={
+                            "boxstyle": 'round,pad=0.3',
+                            "facecolor": 'white',
+                            "alpha": 0.95,
+                            "edgecolor": '#45cfe0',
+                            "linewidth": 1
+                        },
+                        arrowprops={
+                            "arrowstyle": '->',
+                            "color": '#45cfe0',
+                            "alpha": 0.8,
+                            "lw": 1.5,
+                            "shrinkA": 5,
+                            "shrinkB": 5
+                        }
                     )
 
                 # Customize the plot
-                plt.title(f'Protein Distribution on Sigmoidal Curve\nCell Line: {cell_line}', 
+                plt.title(f'Protein Distribution on Sigmoidal Curve\nCell Line: {cell_line}',
                          fontsize=18, fontweight='bold', pad=25)
                 plt.xlabel('Weight Normalized Intensity Ranking', fontsize=14, fontweight='bold')
                 plt.ylabel('Log10 Normalized Intensity', fontsize=14, fontweight='bold')
-                
+
                 # Add grid for better readability
                 plt.grid(True, alpha=0.2, linestyle='--')
-                
+
                 # Add legend with better positioning
                 plt.legend(loc='upper right', fontsize=12, framealpha=0.9)
-                
+
                 # Adjust layout to prevent label cutoff
                 plt.tight_layout()
-                
+
                 # Save the plot
                 filename = f"sigmoidal_curve_{cell_line.replace(' ', '_').replace('/', '_')}.png"
                 if not self.save_graph(plt.gcf(), filename, output_dir):
                     logger.error(f"Failed to save sigmoidal curve plot for cell line: {cell_line}")
                     return False
-                
+
                 plt.close()
 
             logger.info(f"Successfully generated sigmoidal curve plots for {len(unique_cell_lines)} cell lines")

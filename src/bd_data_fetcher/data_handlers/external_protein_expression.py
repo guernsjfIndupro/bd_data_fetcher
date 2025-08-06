@@ -6,7 +6,6 @@ from bd_data_fetcher.api.umap_models import (
     ExternalProteinExpressionData,
     ProteomicsNormalExpressionData,
 )
-
 from bd_data_fetcher.data_handlers.base_handler import BaseDataHandler
 from bd_data_fetcher.data_handlers.utils import SheetNames
 
@@ -30,7 +29,7 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
         """
         Build a normal proteomics sheet for a given uniprotkb_ac.
         Creates a matrix where each row represents a gene and each column represents an indication.
-        
+
         TODO: This needs to handle the edge case where
         the first protein does not have data, it currently
         generates a sheet with no data exceept for the gene column.

@@ -1,7 +1,6 @@
 """Gene Expression data visualization graphs."""
 
 import logging
-from collections import defaultdict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -86,11 +85,11 @@ class GeneExpressionGraph(BaseGraph):
             # Get gene names and primary sites
             gene_names = df['Gene'].dropna().tolist()
             primary_sites = [col for col in df.columns if col != 'Gene']
-            
+
             if not gene_names:
                 logger.error("No gene data found")
                 return False
-                
+
             if not primary_sites:
                 logger.error("No primary site data found")
                 return False
@@ -174,4 +173,3 @@ class GeneExpressionGraph(BaseGraph):
         Returns:
             True if generated successfully, False otherwise
         """
-        pass

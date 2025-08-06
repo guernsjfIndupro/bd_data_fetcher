@@ -6,7 +6,6 @@ import pandas as pd
 from scipy.interpolate import interp1d, splev, splrep
 
 from bd_data_fetcher.api.umap_models import CellLineProteomicsData
-
 from bd_data_fetcher.data_handlers.base_handler import BaseDataHandler
 from bd_data_fetcher.data_handlers.utils import SheetNames
 
@@ -173,11 +172,11 @@ class WCEDataHandler(BaseDataHandler):
             # Convert onc_lineage enum values to their string values
             if 'onc_lineage' in data_df.columns:
                 data_df['onc_lineage'] = data_df['onc_lineage'].apply(lambda x: x.value if hasattr(x, 'value') else x)
-            
+
             # Ensure is_mapped column exists and has proper values
             if 'is_mapped' not in data_df.columns:
                 data_df['is_mapped'] = False
-            
+
             # Transform data using common method
             column_mapping = {
                 "Gene": "symbol",
@@ -246,10 +245,10 @@ class WCEDataHandler(BaseDataHandler):
         # Filter out cell lines that already exist
         new_cell_lines = [name for name in cell_line_names if name not in existing_cell_lines]
         skipped_cell_lines = [name for name in cell_line_names if name in existing_cell_lines]
-        
+
         if skipped_cell_lines:
             logger.info(f"Skipping {len(skipped_cell_lines)} cell lines that already exist: {skipped_cell_lines}")
-        
+
         if not new_cell_lines:
             logger.info("All cell lines already exist in the sheet. No new curves to generate.")
             return

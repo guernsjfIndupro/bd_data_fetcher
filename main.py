@@ -1,5 +1,5 @@
 def main():
-    print("Hello from bd-data-fetcher!")
+    pass
 
 
 if __name__ == "__main__":

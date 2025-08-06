@@ -7,7 +7,6 @@ import logging
 import pandas as pd
 
 from bd_data_fetcher.api.umap_models import DepMapData
-
 from bd_data_fetcher.data_handlers.base_handler import BaseDataHandler
 from bd_data_fetcher.data_handlers.utils import SheetNames
 

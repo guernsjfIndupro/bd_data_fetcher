@@ -141,8 +141,8 @@ class ExcelGraphAnalyzer:
         total_count = len(data_type_mapping)
 
         for data_type in data_type_mapping.keys():
-            # Only process WCE-related and normal gene expression graphs; skip others
-            allowed_graph_types = {"wce_data", "cell_line_sigmoidal_curves", "normal_gene_expression"}
+            # Only process UMap-related graphs; skip others
+            allowed_graph_types = {"umap_data", "cell_line_targeting"}
             if data_type not in allowed_graph_types:
                 console.print(f"[yellow]Skipping unsupported graph type: {data_type}[/yellow]")
                 continue
@@ -188,8 +188,8 @@ class ExcelGraphAnalyzer:
                 console.print(f"[red]✗ Unsupported data type: {data_type}[/red]")
                 continue
 
-            # Only process WCE-related and normal gene expression graphs; skip others
-            allowed_graph_types = {"wce_data", "cell_line_sigmoidal_curves", "normal_gene_expression"}
+            # Only process UMap-related graphs; skip others
+            allowed_graph_types = {"umap_data", "cell_line_targeting"}
             if data_type not in allowed_graph_types:
                 console.print(f"[yellow]Skipping unsupported graph type: {data_type}[/yellow]")
                 continue

@@ -14,7 +14,6 @@ from functools import lru_cache
 import pandas as pd
 
 from bd_data_fetcher.api.umap_models import RNAGeneExpressionData
-
 from bd_data_fetcher.data_handlers.base_handler import BaseDataHandler
 from bd_data_fetcher.data_handlers.utils import SheetNames
 
@@ -158,8 +157,8 @@ class GeneExpressionDataHandler(BaseDataHandler):
 
         if not all_df.empty:
             # Separate normal and tumor data from the same dataset
-            normal_df = all_df[all_df["is_cancer"] == False]
-            tumor_df = all_df[all_df["is_cancer"] == True]
+            normal_df = all_df[all_df["is_cancer"] is False]
+            tumor_df = all_df[all_df["is_cancer"] is True]
 
             if not normal_df.empty and not tumor_df.empty:
                 # Calculate average normal expression per primary site
