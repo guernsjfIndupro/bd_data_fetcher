@@ -93,10 +93,14 @@ class UMapGraph(BaseGraph):
                 logger.error("No valid numeric data found in Log2 FC or P-value columns")
                 return False
 
-            # Get unique replicate set IDs
+                        # Get unique replicate set IDs
             unique_replicate_sets = df['Replicate Set ID'].unique()
-
+            
+            # Get all target proteins from all UMap data (not just current replicate set)
+            all_target_proteins = df['Target Protein'].unique()
+            
             logger.info(f"Creating volcano plots for {len(unique_replicate_sets)} replicate sets")
+            logger.info(f"Found {len(all_target_proteins)} unique target proteins across all replicate sets")
 
             # Set Seaborn style for professional medical appearance
             sns.set_style("whitegrid")
@@ -106,18 +110,18 @@ class UMapGraph(BaseGraph):
             for replicate_set_id in unique_replicate_sets:
                 # Filter data for this replicate set
                 plot_data = df[df['Replicate Set ID'] == replicate_set_id]
-
+                
                 if plot_data.empty:
                     logger.warning(f"No data found for replicate set ID: {replicate_set_id}")
                     continue
-
+                
                 # Get metadata for this replicate set (should be consistent within a replicate set)
                 cell_line = plot_data['Cell Line'].iloc[0]
                 chemistry = plot_data['Chemistry'].iloc[0]
                 target_protein = plot_data['Target Protein'].iloc[0]
 
-                # Get target proteins from the UMap data
-                target_proteins = plot_data['Target Protein'].unique()
+                # Highlight target proteins from ALL replicate sets (not just current one)
+                target_points = plot_data[plot_data['Protein Symbol'].isin(all_target_proteins)]
 
                 # Create the volcano plot
                 plt.figure(figsize=(12, 10))
@@ -133,8 +137,8 @@ class UMapGraph(BaseGraph):
                     linewidth=0.5
                 )
 
-                # Highlight target proteins
-                target_points = plot_data[plot_data['Protein Symbol'].isin(target_proteins)]
+                # Highlight target proteins from ALL replicate sets (not just current one)
+                target_points = plot_data[plot_data['Protein Symbol'].isin(all_target_proteins)]
 
                 if not target_points.empty:
                     plt.scatter(
