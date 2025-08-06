@@ -62,7 +62,7 @@ def setup_logging(log_level: str = "INFO", log_file: str | None = None):
 
 
 @app.command()
-def gene_expression(
+def data(
     symbols: list[str] = typer.Argument(
         ..., help="List of protein symbols (e.g., EGFR TP53 BRCA1)"
     ),
@@ -111,7 +111,7 @@ def gene_expression(
         console.print(f"Successfully mapped {len(symbol_mappings)} proteins")
 
         # Initialize data handlers
-        GeneExpressionDataHandler()
+        gene_handler = GeneExpressionDataHandler()
         umap_handler = uMapDataHandler()
         wce_handler = WCEDataHandler()
         depmap_handler = DepMapDataHandler()
@@ -127,13 +127,13 @@ def gene_expression(
 
             try:
                 # Generate all three types of gene expression data
-                # gene_handler.build_normal_gene_expression_sheet(uniprotkb_ac, output)
-                # gene_handler.build_gene_expression_sheet(uniprotkb_ac, output)
-                # gene_handler.build_gene_tumor_normal_ratios_sheet(uniprotkb_ac, output)
+                gene_handler.build_normal_gene_expression_sheet(uniprotkb_ac, output)
+                gene_handler.build_gene_expression_sheet(uniprotkb_ac, output)
+                gene_handler.build_gene_tumor_normal_ratios_sheet(uniprotkb_ac, output)
 
 
 
-                # umap_handler.get_umap_data(uniprotkb_ac, output)
+                umap_handler.get_umap_data(uniprotkb_ac, output)
 
                 cell_line_set = umap_handler.get_cell_lines(uniprotkb_ac)
 
