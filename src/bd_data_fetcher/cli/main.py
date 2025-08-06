@@ -1,23 +1,21 @@
 """Main CLI application for BD Data Fetcher."""
 
-import os
 import sys
 from pathlib import Path
-from typing import Optional
 
 import structlog
 import typer
 from rich.console import Console
 from rich.table import Table
 
-from ..api.umap_client import UMapServiceClient
-from ..data_handlers.depmap import DepMapDataHandler
-from ..data_handlers.external_protein_expression import (
+from bd_data_fetcher.api.umap_client import UMapServiceClient
+from bd_data_fetcher.data_handlers.depmap import DepMapDataHandler
+from bd_data_fetcher.data_handlers.external_protein_expression import (
     ExternalProteinExpressionDataHandler,
 )
-from ..data_handlers.gene_expression import GeneExpressionDataHandler
-from ..data_handlers.internal_wce import WCEDataHandler
-from ..data_handlers.umap import uMapDataHandler
+from bd_data_fetcher.data_handlers.gene_expression import GeneExpressionDataHandler
+from bd_data_fetcher.data_handlers.internal_wce import WCEDataHandler
+from bd_data_fetcher.data_handlers.umap import uMapDataHandler
 
 # Initialize Typer app
 app = typer.Typer(
@@ -31,7 +29,7 @@ console = Console()
 
 
 # Configure logging
-def setup_logging(log_level: str = "INFO", log_file: Optional[str] = None):
+def setup_logging(log_level: str = "INFO", log_file: str | None = None):
     """Set up structured logging."""
     processors = [
         structlog.stdlib.filter_by_level,
@@ -112,10 +110,10 @@ def gene_expression(
         console.print(f"Successfully mapped {len(symbol_mappings)} proteins")
 
         # Initialize data handlers
-        gene_handler = GeneExpressionDataHandler()
+        GeneExpressionDataHandler()
         umap_handler = uMapDataHandler()
         wce_handler = WCEDataHandler()
-        depmap_handler = DepMapDataHandler()
+        DepMapDataHandler()
         external_protein_handler = ExternalProteinExpressionDataHandler()
 
         # Generate gene expression data for each protein
@@ -132,11 +130,12 @@ def gene_expression(
                 # gene_handler.build_gene_expression_sheet(uniprotkb_ac, output)
                 # gene_handler.build_gene_tumor_normal_ratios_sheet(uniprotkb_ac, output)
 
-                """
 
-                umap_handler.get_umap_data(uniprotkb_ac, output)
+
+                # umap_handler.get_umap_data(uniprotkb_ac, output)
 
                 cell_line_set = umap_handler.get_cell_lines(uniprotkb_ac)
+                """
                 console.print(f"Found {len(cell_line_set)} cell lines for {symbol}")
 
                 # Generate WCE data sheet
@@ -155,6 +154,7 @@ def gene_expression(
                 external_protein_handler.build_normal_proteomics_sheet(uniprotkb_ac, output)
                 console.print(f"Generated normal proteomics data sheet records for {symbol}")
                 """
+                wce_handler.build_cell_line_sigmoidal_curves(cell_line_set, output)
                 external_protein_handler.build_study_specific_sheet(
                     uniprotkb_ac, output
                 )
@@ -165,9 +165,9 @@ def gene_expression(
                 console.print(f"Completed processing {symbol}")
 
             except Exception as e:
-                logger.error(f"Failed to process {symbol}", error=str(e))
+                logger.exception(f"Failed to process {symbol}", error=str(e))
                 console.print(
-                    f"Warning: Failed to process {symbol}: {str(e)}", style="yellow"
+                    f"Warning: Failed to process {symbol}: {e!s}", style="yellow"
                 )
                 continue
 
@@ -180,8 +180,8 @@ def gene_expression(
             console.print(f"File size: {file_size:,} bytes")
 
     except Exception as e:
-        logger.error("Failed to generate gene expression data", error=str(e))
-        console.print(f"Error: {str(e)}", style="red")
+        logger.exception("Failed to generate gene expression data", error=str(e))
+        console.print(f"Error: {e!s}", style="red")
         sys.exit(1)
 
 

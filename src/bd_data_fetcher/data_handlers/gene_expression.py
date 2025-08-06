@@ -10,11 +10,11 @@ Retrieval of all gene expression data for a given study
 
 import logging
 from functools import lru_cache
-from typing import List
 
 import pandas as pd
 
-from ..api.umap_models import RNAGeneExpressionData
+from bd_data_fetcher.api.umap_models import RNAGeneExpressionData
+
 from .base_handler import BaseDataHandler
 
 logger = logging.getLogger(__name__)
@@ -43,7 +43,7 @@ class GeneExpressionDataHandler(BaseDataHandler):
 
     def _retrieve_normal_gene_expression(
         self, uniprotkb_ac: str
-    ) -> List[RNAGeneExpressionData]:
+    ) -> list[RNAGeneExpressionData]:
         """
         Retrieve normal gene expression data for a given uniprotkb_ac.
 
@@ -65,7 +65,7 @@ class GeneExpressionDataHandler(BaseDataHandler):
         )
 
     @lru_cache
-    def get_all_primary_sites(self) -> List[str]:
+    def get_all_primary_sites(self) -> list[str]:
         """
         Get all possible primary_sites.
         """
@@ -73,7 +73,7 @@ class GeneExpressionDataHandler(BaseDataHandler):
 
     def _retrieve_gene_expression_data(
         self, uniprotkb_ac: str
-    ) -> List[RNAGeneExpressionData]:
+    ) -> list[RNAGeneExpressionData]:
         """
         Retrieve all gene expression data for a given study.
 
@@ -157,8 +157,8 @@ class GeneExpressionDataHandler(BaseDataHandler):
 
         if not all_df.empty:
             # Separate normal and tumor data from the same dataset
-            normal_df = all_df[all_df["is_cancer"] == False]
-            tumor_df = all_df[all_df["is_cancer"] == True]
+            normal_df = all_df[all_df["is_cancer"] is False]
+            tumor_df = all_df[all_df["is_cancer"] is True]
 
             if not normal_df.empty and not tumor_df.empty:
                 # Calculate average normal expression per primary site

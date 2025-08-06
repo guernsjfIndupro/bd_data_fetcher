@@ -1,6 +1,5 @@
 import enum
 from datetime import datetime
-from typing import List, Optional
 
 from pydantic import BaseModel
 
@@ -47,26 +46,26 @@ class OncLineageEnum(enum.Enum):
 class CellLineProteomicsData(BaseModel):
     intensity: float
     normalized_intensity: float
-    intensity_ranking: Optional[int] = None
-    weight_normalized_intensity_ranking: Optional[int] = None
+    intensity_ranking: int | None = None
+    weight_normalized_intensity_ranking: int | None = None
     symbol: str
     uniprotkb_ac: str
     experiment_type: str
     cell_line_name: str
     onc_lineage: OncLineageEnum
-    onc_subtype: Optional[str] = None
-    title: Optional[str] = None
+    onc_subtype: str | None = None
+    title: str | None = None
     copies_per_cell: float
 
 
 class CellLineData(BaseModel):
-    ccle_model_id: Optional[str] = None
-    rrid: Optional[str] = None
+    ccle_model_id: str | None = None
+    rrid: str | None = None
     name: str
-    ccle_name: Optional[str] = None
-    onc_lineage: Optional[OncLineageEnum] = None
-    onc_primary_disease: Optional[str] = None
-    onc_subtype: Optional[str] = None
+    ccle_name: str | None = None
+    onc_lineage: OncLineageEnum | None = None
+    onc_primary_disease: str | None = None
+    onc_subtype: str | None = None
     experiment_count: int
 
 
@@ -76,8 +75,8 @@ class ReciprocalMicroMapData(BaseModel):
     onc_lineage: str
     chemistry: str
     id: int
-    log2_fc: Optional[float] = None
-    nlog10_pvalue: Optional[float] = None
+    log2_fc: float | None = None
+    nlog10_pvalue: float | None = None
     proximal_uniprotkb_ac: str
     target_uniprotkb_ac: str
 
@@ -85,8 +84,8 @@ class ReciprocalMicroMapData(BaseModel):
 class TissueSampleDiaIntensity(BaseModel):
     intensity: float
     normalized_intensity: float
-    intensity_ranking: Optional[int] = None
-    weight_normalized_intensity_ranking: Optional[int] = None
+    intensity_ranking: int | None = None
+    weight_normalized_intensity_ranking: int | None = None
     symbol: str
     uniprotkb_ac: str
     experiment_type: str
@@ -94,9 +93,9 @@ class TissueSampleDiaIntensity(BaseModel):
     benchling_aliquot_registry_id: str
     benchling_human_donor_registry_id: str
     vendor_aliquot_id: str
-    aliquot_name: Optional[str] = None
-    diagnosis: Optional[str] = None
-    tissue_type: Optional[str] = None
+    aliquot_name: str | None = None
+    diagnosis: str | None = None
+    tissue_type: str | None = None
 
 
 class RNAGeneExpressionData(BaseModel):
@@ -132,7 +131,7 @@ class ExternalProteinExpressionData(BaseModel):
     sample_name: str
     sample_type: str
     study_name: str
-    paired_sample_group: Optional[str] = None
+    paired_sample_group: str | None = None
 
 
 class DepMapData(BaseModel):
@@ -141,18 +140,18 @@ class DepMapData(BaseModel):
     cell_line_name: str
     onc_lineage: str
     onc_primary_disease: str
-    onc_subtype: Optional[str] = None
+    onc_subtype: str | None = None
     tpm_log2: float
-    gene_level_copy_number: Optional[float] = None
+    gene_level_copy_number: float | None = None
 
 
 class DepMapResponse(BaseModel):
     current_page: int
-    next_page: Optional[int] = None
+    next_page: int | None = None
     page_size: int
     total_items: int
     total_pages: int
-    data: List[DepMapData]
+    data: list[DepMapData]
 
 
 # Replicate Sets Models
@@ -162,18 +161,18 @@ class Protein(BaseModel):
     mass_da: float
     aa_res_length: int
     is_isoform: bool
-    canonical_protein: Optional[str] = None
-    pdb: Optional[str] = None
-    pubmeb_ids: Optional[str] = None
-    max_drug_targetability: Optional[str] = None
-    sequence: Optional[str] = None
+    canonical_protein: str | None = None
+    pdb: str | None = None
+    pubmeb_ids: str | None = None
+    max_drug_targetability: str | None = None
+    sequence: str | None = None
     id: int
 
 
 class Target(BaseModel):
     name: str
-    description: Optional[str] = None
-    proteins: List[Protein]
+    description: str | None = None
+    proteins: list[Protein]
     type: str
     id: int
 
@@ -182,14 +181,14 @@ class ProcessedDataObject(BaseModel):
     object_type: str
     s3_bucket: str
     s3_key: str
-    errors: Optional[str] = None
+    errors: str | None = None
     id: int
 
 
 class Experiment(BaseModel):
     id: int
     description: str
-    raw_data_object_id: Optional[int] = None
+    raw_data_object_id: int | None = None
 
 
 class Analysis(BaseModel):
@@ -199,38 +198,38 @@ class Analysis(BaseModel):
     flyte_workflow_name: str
     flyte_workflow_project: str
     flyte_workflow_domain: str
-    requested_by_azure_user: Optional[str] = None
+    requested_by_azure_user: str | None = None
     status: str
     prominence: str
     replicate_set_id: int
-    warning_message: Optional[str] = None
+    warning_message: str | None = None
 
 
 class CellLine(BaseModel):
-    ccle_model_id: Optional[str] = None
-    rrid: Optional[str] = None
+    ccle_model_id: str | None = None
+    rrid: str | None = None
     name: str
-    ccle_name: Optional[str] = None
-    onc_lineage: Optional[str] = None
-    onc_primary_disease: Optional[str] = None
-    onc_subtype: Optional[str] = None
-    age: Optional[int] = None
-    sex: Optional[str] = None
-    collection_site: Optional[str] = None
-    type: Optional[str] = None
-    growth_pattern: Optional[str] = None
-    source: Optional[str] = None
-    engineering_type: Optional[str] = None
-    engineering_description: Optional[str] = None
+    ccle_name: str | None = None
+    onc_lineage: str | None = None
+    onc_primary_disease: str | None = None
+    onc_subtype: str | None = None
+    age: int | None = None
+    sex: str | None = None
+    collection_site: str | None = None
+    type: str | None = None
+    growth_pattern: str | None = None
+    source: str | None = None
+    engineering_type: str | None = None
+    engineering_description: str | None = None
     id: int
 
 
 class CellSource(BaseModel):
     name: str
     id: int
-    cell_lines: List[CellLine]
-    immune_cell_sample_pools: List = []  # Empty list as per example
-    dissociated_tumor_cells: List = []  # Empty list as per example
+    cell_lines: list[CellLine]
+    immune_cell_sample_pools: list = []  # Empty list as per example
+    dissociated_tumor_cells: list = []  # Empty list as per example
 
 
 class Binder(BaseModel):
@@ -238,8 +237,8 @@ class Binder(BaseModel):
     name: str
     web_url: str
     display_name: str
-    protein_complex: Optional[str]
-    antigen_targets: Optional[str]
+    protein_complex: str | None
+    antigen_targets: str | None
     type: str
     benchling_created_date: datetime
     created_at: datetime
@@ -248,34 +247,34 @@ class Binder(BaseModel):
 
 
 class ReplicateSet(BaseModel):
-    description: Optional[str] = None
+    description: str | None = None
     id: int
     target: Target
-    cell_line: Optional[str] = None
+    cell_line: str | None = None
     cell_source_id: int
-    binder: Optional[Binder] = None
+    binder: Binder | None = None
     chemistry: str
-    processed_data_object: Optional[ProcessedDataObject] = None
+    processed_data_object: ProcessedDataObject | None = None
     replicate_column_prefix: str
     control_column_prefix: str
-    num_control_columns: Optional[int] = None
-    num_experimental_columns: Optional[int] = None
-    valid: Optional[bool] = None
-    internal_dev_valid: Optional[bool] = None
-    invalidation_reason: Optional[str] = None
-    azure_user_invalidator: Optional[str] = None
+    num_control_columns: int | None = None
+    num_experimental_columns: int | None = None
+    valid: bool | None = None
+    internal_dev_valid: bool | None = None
+    invalidation_reason: str | None = None
+    azure_user_invalidator: str | None = None
     experiment: Experiment
-    analyses: List[Analysis]
+    analyses: list[Analysis]
     cell_source: CellSource
 
 
 class ReplicateSetsResponse(BaseModel):
     current_page: int
-    next_page: Optional[int] = None
+    next_page: int | None = None
     page_size: int
     total_items: int
     total_pages: int
-    data: List[ReplicateSet]
+    data: list[ReplicateSet]
 
 
 # Analysis Results Models
@@ -292,8 +291,8 @@ class AnalysisResult(BaseModel):
 
 class AnalysisResultsResponse(BaseModel):
     current_page: int
-    next_page: Optional[int] = None
+    next_page: int | None = None
     page_size: int
     total_items: int
     total_pages: int
-    data: List[AnalysisResult]
+    data: list[AnalysisResult]

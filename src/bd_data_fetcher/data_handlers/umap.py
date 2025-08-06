@@ -1,5 +1,4 @@
 import logging
-from typing import Set
 
 import pandas as pd
 
@@ -109,7 +108,7 @@ class uMapDataHandler(BaseDataHandler):
 
         return replicate_sets
 
-    def get_cell_lines(self, uniprotkb_ac: str) -> Set[str]:
+    def get_cell_lines(self, uniprotkb_ac: str) -> set[str]:
         """
         Get all cell lines that have targeted the given protein.
 

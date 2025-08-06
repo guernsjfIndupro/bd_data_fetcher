@@ -3,11 +3,10 @@ Base handler class for common data handler patterns.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
-from ..api.umap_client import UMapServiceClient
+from bd_data_fetcher.api.umap_client import UMapServiceClient
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +20,8 @@ class BaseDataHandler:
         self.umap_client = UMapServiceClient()
 
     def _manage_excel_sheet(
-        self, file_path: str, sheet_name: str, columns: List[str]
-    ) -> Dict[str, pd.DataFrame]:
+        self, file_path: str, sheet_name: str, columns: list[str]
+    ) -> dict[str, pd.DataFrame]:
         """
         Common Excel sheet management logic.
 
@@ -64,7 +63,7 @@ class BaseDataHandler:
         file_path: str,
         sheet_name: str,
         data_df: pd.DataFrame,
-        default_columns: List[str],
+        default_columns: list[str],
     ) -> None:
         """
         Common Excel append logic.
@@ -98,7 +97,7 @@ class BaseDataHandler:
             )
 
     def _transform_data_to_sheet_format(
-        self, data_df: pd.DataFrame, column_mapping: Dict[str, str]
+        self, data_df: pd.DataFrame, column_mapping: dict[str, str]
     ) -> pd.DataFrame:
         """
         Common data transformation logic.
@@ -116,14 +115,13 @@ class BaseDataHandler:
             for sheet_col, df_col in column_mapping.items():
                 if df_col in row:
                     transformed_row[sheet_col] = row[df_col]
+                # Handle missing columns with appropriate defaults
+                elif isinstance(row.get(df_col, None), bool):
+                    transformed_row[sheet_col] = False
+                elif isinstance(row.get(df_col, None), int | float):
+                    transformed_row[sheet_col] = 0
                 else:
-                    # Handle missing columns with appropriate defaults
-                    if isinstance(row.get(df_col, None), bool):
-                        transformed_row[sheet_col] = False
-                    elif isinstance(row.get(df_col, None), (int, float)):
-                        transformed_row[sheet_col] = 0
-                    else:
-                        transformed_row[sheet_col] = ""
+                    transformed_row[sheet_col] = ""
             transformed_data.append(transformed_row)
 
         return pd.DataFrame(transformed_data)
@@ -164,7 +162,7 @@ class BaseDataHandler:
         all_groups = sorted(data_df[group_field].unique())
 
         # Manage Excel sheet
-        columns = [gene_column_name] + all_groups
+        columns = [gene_column_name, *all_groups]
         self._manage_excel_sheet(file_path, sheet_name, columns)
 
         # Compute the average for each group
@@ -180,7 +178,7 @@ class BaseDataHandler:
             all_columns = list(existing_df.columns)
         except (FileNotFoundError, ValueError):
             # If sheet doesn't exist or is empty, use columns from current data
-            all_columns = [gene_column_name] + all_groups
+            all_columns = [gene_column_name, *all_groups]
             existing_df = pd.DataFrame(columns=all_columns)
 
         # Ensure all columns from the sheet are present in the row_data, fill missing with None
@@ -232,5 +230,5 @@ class BaseDataHandler:
         except Exception as e:
             # Extract uniprotkb_ac from kwargs for error message
             uniprotkb_ac = kwargs.get("uniprotkb_ac", "unknown")
-            logger.error(f"Error in API call for {uniprotkb_ac}: {e}")
+            logger.exception(f"Error in API call for {uniprotkb_ac}: {e}")
             return []

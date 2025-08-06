@@ -1,7 +1,6 @@
 import logging
 from functools import lru_cache
-from typing import Any, Dict, List, Optional
-from urllib.parse import urljoin
+from typing import Any
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -16,7 +15,6 @@ from .umap_models import (
     ProteomicsNormalExpressionData,
     ReciprocalMicroMapData,
     ReplicateSet,
-    ReplicateSetsResponse,
     RNAGeneExpressionData,
     TissueSampleDiaIntensity,
 )
@@ -35,8 +33,9 @@ class UMapServiceClient:
         self.base_url = "http://localhost:8081/umap-service/api/v1/"
 
         if not self.base_url:
+            msg = "Base URL must set in UMAP_SERVICE_URL environment variable"
             raise ValueError(
-                "Base URL must set in UMAP_SERVICE_URL environment variable"
+                msg
             )
 
         retry_strategy = Retry(
@@ -53,8 +52,8 @@ class UMapServiceClient:
         self.session.mount("http://", adapter)
 
     def _get(
-        self, endpoint: str, params: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, endpoint: str, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Generic GET request.
 
@@ -73,9 +72,9 @@ class UMapServiceClient:
     def _post(
         self,
         endpoint: str,
-        data: Dict[str, Any],
-        params: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        data: dict[str, Any],
+        params: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """
         Generic POST request.
 
@@ -94,9 +93,9 @@ class UMapServiceClient:
     def _get_paginated(
         self,
         endpoint: str,
-        params: Optional[Dict[str, Any]] = None,
+        params: dict[str, Any] | None = None,
         page_size: int = 1000,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Generic paginated GET request.
 
@@ -132,10 +131,10 @@ class UMapServiceClient:
     def _post_paginated(
         self,
         endpoint: str,
-        params: Optional[Dict[str, Any]] = None,
-        data: Optional[Dict[str, Any]] = None,
+        params: dict[str, Any] | None = None,
+        data: dict[str, Any] | None = None,
         page_size: int = 10,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Generic paginated POST request.
 
@@ -170,7 +169,7 @@ class UMapServiceClient:
 
     def _get_reciprocal_micro_map_data(
         self, target_uniprotkb_ac: str, proximal_uniprotkb_ac: str
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get reciprocal micro map data from the UMap service.
         """
@@ -188,7 +187,7 @@ class UMapServiceClient:
     @lru_cache(maxsize=10000)
     def _get_proteomics_cell_line_data(
         self, uniprotkb_ac: str
-    ) -> List[CellLineProteomicsData]:
+    ) -> list[CellLineProteomicsData]:
         """
         Get cell line data from the UMap service.
         """
@@ -202,21 +201,21 @@ class UMapServiceClient:
 
     def _get_all_cell_line_proteomics_data(
         self, cell_line_name: str, page_size: int = 1000
-    ) -> List[CellLineProteomicsData]:
+    ) -> list[CellLineProteomicsData]:
         """
         Get all cell line proteomics data for a specific cell line from the UMap service.
-        
+
         Args:
             cell_line_name: Name of the cell line to retrieve data for
             page_size: Number of items per page (default: 1000)
-            
+
         Returns:
             List of CellLineProteomicsData objects for the specified cell line
         """
         endpoint = "dia/cell_line/all"
-        
+
         unvalidated_data = self._get_paginated(
-            endpoint=endpoint, 
+            endpoint=endpoint,
             params={"cell_line_name": cell_line_name},
             page_size=page_size
         )
@@ -225,7 +224,7 @@ class UMapServiceClient:
 
     def _get_proteomics_tissue_data(
         self, uniprotkb_ac: str
-    ) -> List[TissueSampleDiaIntensity]:
+    ) -> list[TissueSampleDiaIntensity]:
         """
         Get proteomics tissue data from the UMap service.
         """
@@ -238,7 +237,7 @@ class UMapServiceClient:
 
     def _get_all_proteomics_tissue_data(
         self, tissue_type: str, experiment_type: str
-    ) -> List[TissueSampleDiaIntensity]:
+    ) -> list[TissueSampleDiaIntensity]:
         """
         Get all proteomics tissue data from the UMap service.
         """
@@ -251,7 +250,7 @@ class UMapServiceClient:
         return validated_data
 
     @lru_cache(maxsize=10000)
-    def _get_proteomics_cell_lines(self) -> List[CellLineData]:
+    def _get_proteomics_cell_lines(self) -> list[CellLineData]:
         """
         Get all proteomics cell lines from the UMap service.
         """
@@ -261,8 +260,8 @@ class UMapServiceClient:
         return validated_data
 
     def _get_rna_gene_expression_data(
-        self, uniprotkb_acs: List[str]
-    ) -> List[RNAGeneExpressionData]:
+        self, uniprotkb_acs: list[str]
+    ) -> list[RNAGeneExpressionData]:
         """
         Get RNA gene expression data from the UMap service.
 
@@ -287,7 +286,7 @@ class UMapServiceClient:
 
     def _get_proteomics_normal_expression_data(
         self, uniprotkb_ac: str
-    ) -> List[ProteomicsNormalExpressionData]:
+    ) -> list[ProteomicsNormalExpressionData]:
         """
         Get proteomics normal expression data from the UMap service.
         """
@@ -301,7 +300,7 @@ class UMapServiceClient:
         ]
         return validated_data
 
-    def _get_proteomics_normal_expression_data_bounds(self) -> Dict[str, float]:
+    def _get_proteomics_normal_expression_data_bounds(self) -> dict[str, float]:
         """
         Get proteomics normal expression data bounds from the UMap service.
         """
@@ -309,8 +308,8 @@ class UMapServiceClient:
         return self._get(endpoint=endpoint)
 
     def _get_gtex_normal_rna_expression_data_bounds(
-        self, studies: List[str], is_cancer: bool
-    ) -> Dict[str, float]:
+        self, studies: list[str], is_cancer: bool
+    ) -> dict[str, float]:
         """
         Get GTEx normal RNA expression data bounds from the UMap service.
         """
@@ -322,8 +321,8 @@ class UMapServiceClient:
         return self._post(endpoint=endpoint, data=studies, params=params)
 
     def _get_external_proteomics_data(
-        self, uniprotkb_acs: List[str]
-    ) -> List[ExternalProteinExpressionData]:
+        self, uniprotkb_acs: list[str]
+    ) -> list[ExternalProteinExpressionData]:
         """
         Get external proteomics data from the UMap service.
         """
@@ -337,14 +336,14 @@ class UMapServiceClient:
         ]
         return validated_data
 
-    def _get_all_primary_sites(self) -> List[str]:
+    def _get_all_primary_sites(self) -> list[str]:
         """
         Get all possible primary_sites.
         """
         endpoint = "pancancer/indications"
         return self._get(endpoint=endpoint)
 
-    def map_protein(self, gene_symbols: List[str]) -> Dict[str, str]:
+    def map_protein(self, gene_symbols: list[str]) -> dict[str, str]:
         """
         Map gene symbols to UniProtKB accession numbers.
 
@@ -378,7 +377,7 @@ class UMapServiceClient:
 
     def _get_replicate_sets(
         self, include_dev_invalid: bool = True, page_size: int = 200
-    ) -> List[ReplicateSet]:
+    ) -> list[ReplicateSet]:
         """
         Get all replicate sets from the UMap service using pagination.
 
@@ -403,7 +402,7 @@ class UMapServiceClient:
 
     def _get_analysis_results(
         self, replicate_set_id: int, page_size: int = 1000
-    ) -> List[AnalysisResult]:
+    ) -> list[AnalysisResult]:
         """
         Get analysis results from the UMap service.
         """
@@ -417,10 +416,10 @@ class UMapServiceClient:
 
     def _get_dep_map_data(
         self,
-        uniprotkb_acs: List[str],
-        ccle_model_ids: Optional[List[str]] = None,
+        uniprotkb_acs: list[str],
+        ccle_model_ids: list[str] | None = None,
         page_size: int = 1000,
-    ) -> List[DepMapData]:
+    ) -> list[DepMapData]:
         """
         Get dep-map data from the UMap service.
 

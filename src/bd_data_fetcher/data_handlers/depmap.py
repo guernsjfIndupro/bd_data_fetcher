@@ -3,12 +3,11 @@ DepMap data handler for processing dep-map data.
 """
 
 import logging
-from functools import lru_cache
-from typing import List, Optional, Set
 
 import pandas as pd
 
-from ..api.umap_models import DepMapData
+from bd_data_fetcher.api.umap_models import DepMapData
+
 from .base_handler import BaseDataHandler
 
 logger = logging.getLogger(__name__)
@@ -20,8 +19,8 @@ class DepMapDataHandler(BaseDataHandler):
     """
 
     def get_dep_map_data(
-        self, uniprotkb_acs: List[str], cell_line_set: Set[str]
-    ) -> List[DepMapData]:
+        self, uniprotkb_acs: list[str], cell_line_set: set[str]
+    ) -> list[DepMapData]:
         """
         Retrieve DepMap data for given uniprotkb_acs.
 
@@ -54,11 +53,11 @@ class DepMapDataHandler(BaseDataHandler):
                 data for data in dep_map_data if data.cell_line_name in cell_line_set
             ]
         except Exception as e:
-            logger.error(f"Error retrieving DepMap data for {uniprotkb_acs}: {e}")
+            logger.exception(f"Error retrieving DepMap data for {uniprotkb_acs}: {e}")
             return []
 
     def build_dep_map_data_sheet(
-        self, uniprotkb_acs: List[str], file_path: str, cell_line_set: Set[str]
+        self, uniprotkb_acs: list[str], file_path: str, cell_line_set: set[str]
     ):
         """
         Build a DepMap data sheet for given uniprotkb_acs.

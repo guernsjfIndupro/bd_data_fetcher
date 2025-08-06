@@ -35,10 +35,7 @@ dependencies = [
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
-    "black>=23.0.0",
-    "isort>=5.12.0",
-    "flake8>=6.0.0",
-    "mypy>=1.0.0",
+    "ruff>=0.1.0",
     "pre-commit>=3.0.0",
 ]
 
@@ -49,43 +46,76 @@ bd-fetcher = "bd_data_fetcher.cli.main:app"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.black]
+[tool.ruff]
+# Same as Black.
 line-length = 88
-target-version = ['py311']
-include = '\.pyi?$'
-extend-exclude = '''
-/(
-  # directories
-  \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | build
-  | dist
-)/
-'''
+indent-width = 4
 
-[tool.isort]
-profile = "black"
-multi_line_output = 3
-line_length = 88
+# Assume Python 3.11
+target-version = "py311"
 
-[tool.mypy]
-python_version = "3.11"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-check_untyped_defs = true
-disallow_untyped_decorators = true
-no_implicit_optional = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-warn_no_return = true
-warn_unreachable = true
-strict_equality = true
+[tool.ruff.lint]
+# Enable pycodestyle (`E`), Pyflakes (`F`), and isort (`I`) codes by default.
+select = ["E", "F", "I", "B", "C4", "UP", "N", "W", "S", "A", "C90", "DTZ", "T10", "EM", "EXE", "FA", "ICN", "INP", "ISC", "NPY", "PIE", "T20", "TCH", "TID", "ARG", "PTH", "ERA", "PD", "PGH", "PL", "TRY", "NPY", "AIR", "PERF", "FURB", "LOG", "RUF"]
+ignore = [
+    "E501",  # line too long, handled by formatter
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+    "PLR0913",  # too many arguments
+    "PLR0915",  # too many statements
+    "PLR0912",  # too many branches
+]
+
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+]
+
+[tool.ruff.lint.isort]
+# Like `isort` --profile black, respect a `__init__.py` file's `__all__` declaration.
+combine-as-imports = true
+force-wrap-aliases = true
+
+[tool.ruff.lint.per-file-ignores]
+# Ignore `E501` (line too long) for Jupyter notebooks.
+"*.ipynb" = ["E501"]
+
+[tool.ruff.format]
+# Like Black, use double quotes for strings.
+quote-style = "double"
+
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

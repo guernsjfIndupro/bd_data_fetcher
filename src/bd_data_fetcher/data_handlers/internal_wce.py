@@ -1,25 +1,12 @@
 import logging
-import os
 from collections import defaultdict
-from functools import lru_cache
-from io import BytesIO
-from typing import Any, Dict, List, Set, Type
-from uuid import UUID
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from scipy.interpolate import interp1d, make_splrep, splev
-from scipy.optimize import curve_fit
-from src.mint_mind.core.config import settings
+from scipy.interpolate import interp1d, splev, splrep
 
-from ..api.umap_client import UMapServiceClient
-from ..api.umap_models import (
-    CellLineProteomicsData,
-    ExternalProteinExpressionData,
-    ProteomicsNormalExpressionData,
-    RNAGeneExpressionData,
-)
+from bd_data_fetcher.api.umap_models import CellLineProteomicsData
+
 from .base_handler import BaseDataHandler
 
 logger = logging.getLogger(__name__)
@@ -29,17 +16,17 @@ class WCEDataHandler(BaseDataHandler):
     """
     This class is responsible for handling WCE data.
     """
-    
+
     def __init__(self):
         super().__init__()
         # Cache for expensive cell line data and sigmoidal curves
         self._cell_line_data_cache = {}
         self._sigmoidal_curves_cache = {}
-    
+
     @staticmethod
     def build_generalizable_sigmoidal_curve(
-        data: List[CellLineProteomicsData],
-    ) -> List[np.ndarray]:
+        data: list[CellLineProteomicsData],
+    ) -> list[np.ndarray]:
         """Builds a generalizable sigmoidal curve from cell line proteomics data.
 
         This method processes cell line proteomics data to create a standardized curve
@@ -78,13 +65,18 @@ class WCEDataHandler(BaseDataHandler):
             local_weight_normalized_intensites = [0 for i in range(1001)]
 
             normalized_intensity_ranking_pairs = data_per_cell_line[cell_line_name]
+
+            # Group values by ranking to handle multiple values at the same rank
+            ranking_groups = defaultdict(list)
             for (
                 normalized_intensity_ranking,
                 normalized_intensity,
             ) in normalized_intensity_ranking_pairs:
-                local_weight_normalized_intensites[normalized_intensity_ranking] = (
-                    normalized_intensity
-                )
+                ranking_groups[normalized_intensity_ranking].append(normalized_intensity)
+
+            # Take the average of values at each ranking position
+            for ranking, intensities in ranking_groups.items():
+                local_weight_normalized_intensites[ranking] = np.mean(intensities)
 
             # Interpolate zero values.
             # Find indices and values of non-zero points for interpolation
@@ -116,7 +108,7 @@ class WCEDataHandler(BaseDataHandler):
         y_stack = np.vstack(weight_normalized_intensites)
         y_avg = np.mean(y_stack, axis=0)
 
-        spline = make_splrep(common_rankings, y_avg, s=1)
+        spline = splrep(common_rankings, y_avg, s=1)
         x_fit = np.linspace(min(common_rankings), max(common_rankings), 500)
         y_fit = splev(x_fit, spline)
 
@@ -124,8 +116,8 @@ class WCEDataHandler(BaseDataHandler):
 
 
     def get_wce_data(
-        self, cell_line_set: Set[str], uniprotkb_ac: str
-    ) -> List[CellLineProteomicsData]:
+        self, cell_line_set: set[str], uniprotkb_ac: str
+    ) -> list[CellLineProteomicsData]:
         """
         Retrieve WCE data for a given uniprotkb_ac and cell line set.
 
@@ -147,11 +139,11 @@ class WCEDataHandler(BaseDataHandler):
 
             return wce_data
         except Exception as e:
-            logger.error(f"Error retrieving WCE data for {uniprotkb_ac}: {e}")
+            logger.exception(f"Error retrieving WCE data for {uniprotkb_ac}: {e}")
             return []
 
     def build_wce_data_sheet(
-        self, uniprotkb_ac: str, cell_line_set: Set[str], file_path: str
+        self, uniprotkb_ac: str, cell_line_set: set[str], file_path: str
     ):
         """
         Build a WCE data sheet for a given uniprotkb_ac and cell line set.
@@ -204,35 +196,35 @@ class WCEDataHandler(BaseDataHandler):
 
 
     def build_cell_line_sigmoidal_curves(
-        self, cell_line_names: List[str], file_path: str
+        self, cell_line_names: list[str], file_path: str
     ):
         """
         This function will build the sigmoidal curves for each cell line.
-        It will store them as a specialized excel sheet. 
+        It will store them as a specialized excel sheet.
 
         Column A: Cell Line Name
         Column B: X or Y boolean (0 for X, 1 for Y)
-        
+
         The following 500 points columns will represent the points on the sigmoidal curve.
 
-        This should allow us to plot the sigmoidal curve for each cell line and avoid the 
+        This should allow us to plot the sigmoidal curve for each cell line and avoid the
         very expensive operation that actually builds the sigmoidal curve.
-        
+
         Args:
             cell_line_names: List of cell line names to process
             file_path: Path to save the Excel file
         """
         sheet_name = "cell_line_sigmoidal_curves"
-        
+
         # Create columns: Cell Line Name, X/Y indicator, and 500 curve points
         columns = ["Cell_Line_Name", "Is_Y_Axis"] + [f"Point_{i}" for i in range(500)]
-        
+
         # Manage Excel sheet
         self._manage_excel_sheet(file_path, sheet_name, columns)
-        
+
         for cell_line_name in cell_line_names:
             logger.info(f"Processing sigmoidal curve for cell line: {cell_line_name}")
-            
+
             try:
                 # Check if we already have the sigmoidal curve cached
                 if cell_line_name in self._sigmoidal_curves_cache:
@@ -249,40 +241,40 @@ class WCEDataHandler(BaseDataHandler):
                     else:
                         logger.info(f"Using cached data for cell line: {cell_line_name}")
                         cell_line_data = self._cell_line_data_cache[cell_line_name]
-                    
+
                     if not cell_line_data:
                         logger.warning(f"No data found for cell line: {cell_line_name}")
                         continue
-                    
+
                     # Build sigmoidal curve using existing function
                     curve_data = self.build_generalizable_sigmoidal_curve(cell_line_data)
                     # Cache the curve data for future use
                     self._sigmoidal_curves_cache[cell_line_name] = curve_data
-                
+
                 x_points, y_points = curve_data
-                
+
                 # Prepare data for Excel
                 curve_rows = []
-                
+
                 # X-axis data (Is_Y_Axis = 0)
-                x_row = [cell_line_name, 0] + list(x_points)
+                x_row = [cell_line_name, 0, *list(x_points)]
                 curve_rows.append(x_row)
-                
+
                 # Y-axis data (Is_Y_Axis = 1)
-                y_row = [cell_line_name, 1] + list(y_points)
+                y_row = [cell_line_name, 1, *list(y_points)]
                 curve_rows.append(y_row)
-                
+
                 # Convert to DataFrame
                 curve_df = pd.DataFrame(curve_rows, columns=columns)
-                
+
                 # Append to Excel sheet
                 self._append_to_excel_sheet(file_path, sheet_name, curve_df, columns)
-                
+
                 logger.info(f"Successfully processed sigmoidal curve for {cell_line_name}")
-                
+
             except Exception as e:
-                logger.error(f"Error processing cell line {cell_line_name}: {e}")
+                logger.exception(f"Error processing cell line {cell_line_name}: {e}")
                 continue
-        
+
         logger.info(f"Completed sigmoidal curve generation for {len(cell_line_names)} cell lines")
         logger.info(f"Cache status - Cell line data: {len(self._cell_line_data_cache)}, Sigmoidal curves: {len(self._sigmoidal_curves_cache)}")
