@@ -3,6 +3,9 @@
 import logging
 
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
 
 from bd_data_fetcher.data_handlers.utils import SheetNames
 from bd_data_fetcher.graphs.base_graph import BaseGraph
@@ -64,7 +67,7 @@ class ExternalProteinExpressionGraph(BaseGraph):
         return success
 
     def _generate_normal_proteomics_expression(self, output_dir: str) -> bool:
-        """Generate expression plot for normal proteomics data.
+        """Generate heatmap of normal proteomics expression.
 
         Args:
             output_dir: Directory to save the graph
@@ -73,22 +76,98 @@ class ExternalProteinExpressionGraph(BaseGraph):
             True if generated successfully, False otherwise
         """
         try:
-            # Placeholder implementation
-            fig, ax = plt.subplots(figsize=(12, 6))
-            ax.set_title("Normal Proteomics Expression")
-            ax.set_xlabel("Tissue Type")
-            ax.set_ylabel("Expression Level")
+            # Get normal proteomics data
+            df = self.get_sheet_data(SheetNames.NORMAL_PROTEOMICS_DATA.value)
+            if df is None or df.empty:
+                logger.error("No normal proteomics data available")
+                return False
 
-            # TODO: Implement actual data processing and plotting
-            # df = self.get_sheet_data(SheetNames.NORMAL_PROTEOMICS_DATA.value)
-            # if df is not None:
-            #     tissue_means = df.groupby('tissue_type')['expression_level'].mean()
-            #     ax.bar(tissue_means.index, tissue_means.values)
+            # Check for required columns (matrix format)
+            if 'Gene' not in df.columns:
+                logger.error("Missing 'Gene' column in normal proteomics data")
+                logger.info(f"Available columns: {list(df.columns)}")
+                return False
 
-            return self.save_graph(fig, "normal_proteomics_expression.png", output_dir, "external_protein_expression")
+            # Get gene names and indications
+            gene_names = df['Gene'].dropna().tolist()
+            indications = [col for col in df.columns if col != 'Gene']
+
+            if not gene_names:
+                logger.error("No gene data found")
+                return False
+
+            if not indications:
+                logger.error("No indication data found")
+                return False
+
+            logger.info(f"Creating heatmap for {len(gene_names)} genes across {len(indications)} indications")
+
+            # Create the heatmap data matrix
+            heatmap_data = []
+            for _, row in df.iterrows():
+                gene_name = row['Gene']
+                if pd.notna(gene_name):  # Skip rows with no gene name
+                    expression_values = [row.get(indication, 0) for indication in indications]
+                    heatmap_data.append(expression_values)
+
+            if not heatmap_data:
+                logger.error("No valid expression data found")
+                return False
+
+            heatmap_array = np.array(heatmap_data)
+
+            # Calculate data bounds for color scaling
+            valid_values = heatmap_array[heatmap_array != 0]  # Exclude zeros
+            if len(valid_values) == 0:
+                logger.error("No valid expression values found")
+                return False
+
+            min_bound = valid_values.min()
+            max_bound = valid_values.max()
+            vmax = min(5 * round(max_bound / 5), 20)
+
+            # Create the heatmap
+            plt.figure(figsize=(15, 8))
+            sns.heatmap(
+                heatmap_array,
+                xticklabels=indications,
+                yticklabels=gene_names,
+                vmin=min_bound,
+                vmax=vmax,
+                cmap="Blues",
+                cbar_kws={
+                    "label": "Log2 Expression Value",
+                    "shrink": 0.5,
+                    "aspect": 20,
+                    "pad": 0.05,
+                },
+                linewidths=0.2,
+                linecolor="white",
+                square=True,
+            )
+
+            # Rotate y-labels to horizontal
+            plt.yticks(rotation=0, fontsize=12)
+            # Rotate x-labels for better readability
+            plt.xticks(rotation=45, ha="right", fontsize=12)
+
+            plt.title("Normal Tissue Proteomics Expression Heatmap", fontsize=16, fontweight="bold")
+            plt.xlabel("Indication", fontsize=14, fontweight="bold")
+            plt.ylabel("Gene Symbol", fontsize=14, fontweight="bold")
+            plt.tight_layout()
+
+            # Save the plot
+            filename = "normal_proteomics_heatmap.png"
+            if not self.save_graph(plt.gcf(), filename, output_dir, "external_protein_expression"):
+                logger.error("Failed to save normal proteomics heatmap")
+                return False
+
+            plt.close()
+            logger.info("Successfully generated normal proteomics heatmap")
+            return True
 
         except Exception as e:
-            logger.exception(f"Error generating normal proteomics expression: {e}")
+            logger.exception(f"Error generating normal proteomics heatmap: {e}")
             return False
 
     def _generate_external_proteomics_comparison(self, output_dir: str) -> bool:

@@ -198,12 +198,6 @@ class WCEDataHandler(BaseDataHandler):
 
         return data_df
 
-    # Eventually I will need to be able to generate the spline function
-    # for each cell line, this needs to be cached.
-    # Then i need to be able to place the data on the spline function
-    # to display the protein relative rankings.
-
-
     def build_cell_line_sigmoidal_curves(
         self, cell_line_names: list[str], file_path: str
     ):
