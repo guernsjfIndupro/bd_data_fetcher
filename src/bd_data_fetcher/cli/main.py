@@ -158,74 +158,113 @@ def data(
         console.print(table)
         console.print(f"Successfully mapped {len(symbol_mappings)} proteins")
 
-        # Initialize data handlers
-        GeneExpressionDataHandler()
+        # Initialize data handlers with logging
+        logger.info("Initializing data handlers", handlers=["GeneExpression", "UMap", "WCE", "DepMap", "ExternalProtein"])
+        gene_handler = GeneExpressionDataHandler()
         umap_handler = uMapDataHandler()
         wce_handler = WCEDataHandler()
-        DepMapDataHandler()
-        ExternalProteinExpressionDataHandler()
+        depmap_handler = DepMapDataHandler()
+        external_protein_handler = ExternalProteinExpressionDataHandler()
+        logger.info("Data handlers initialized successfully")
 
         # Generate gene expression data for each protein
         console.print(
             f"\n[bold]Generating data for {len(symbol_mappings)} proteins...[/bold]"
         )
 
-        for symbol, uniprotkb_ac in symbol_mappings.items():
-            console.print(f"Processing {symbol} ({uniprotkb_ac})...")
+        for i, (symbol, uniprotkb_ac) in enumerate(symbol_mappings.items(), 1):
+            logger.info(f"Starting processing for protein {i}/{len(symbol_mappings)}", 
+                       symbol=symbol, uniprotkb_ac=uniprotkb_ac)
+            console.print(f"\n[bold cyan]Processing {symbol} ({uniprotkb_ac})...[/bold cyan]")
 
             try:
-                # Generate all three types of gene expression data
+                # Track UMap data processing
+                logger.info("Starting UMap data processing", symbol=symbol)
+                console.print("  [yellow]→[/yellow] Retrieving UMap cell line data...")
+                
+                cell_line_set = umap_handler.get_cell_lines(uniprotkb_ac)
+                
+                logger.info("UMap cell lines retrieved", 
+                           symbol=symbol, cell_line_count=len(cell_line_set))
+                console.print(f"  [green]✓[/green] Found {len(cell_line_set)} cell lines for {symbol}")
+
+                # Track WCE data processing
+                if cell_line_set:
+                    logger.info("Starting WCE data processing", 
+                               symbol=symbol, cell_line_count=len(cell_line_set))
+                    console.print("  [yellow]→[/yellow] Generating WCE data sheet...")
+                    
+                    wce_data = wce_handler.build_wce_data_sheet(uniprotkb_ac, cell_line_set, output)
+                    
+                    logger.info("WCE data sheet generated", 
+                               symbol=symbol, record_count=len(wce_data))
+                    console.print(f"  [green]✓[/green] Generated WCE data sheet with {len(wce_data)} records")
+                else:
+                    logger.warning("Skipping WCE data generation - no cell lines found", symbol=symbol)
+                    console.print(f"  [yellow]⚠[/yellow] No cell lines found for {symbol}, skipping WCE data generation")
+
+                # Track sigmoidal curves processing
+                if cell_line_set:
+                    logger.info("Starting sigmoidal curves processing", 
+                               symbol=symbol, cell_line_count=len(cell_line_set))
+                    console.print("  [yellow]→[/yellow] Generating sigmoidal curves...")
+                    
+                    wce_handler.build_cell_line_sigmoidal_curves(cell_line_set, output)
+                    
+                    logger.info("Sigmoidal curves generated", symbol=symbol)
+                    console.print("  [green]✓[/green] Generated sigmoidal curves")
+
+                # Track DepMap data processing (currently commented out)
+                # logger.info("Starting DepMap data processing", symbol=symbol)
+                # console.print("  [yellow]→[/yellow] Generating DepMap data sheet...")
+                # depmap_data = depmap_handler.build_dep_map_data_sheet([uniprotkb_ac], file_path=output, cell_line_set=cell_line_set)
+                # logger.info("DepMap data sheet generated", symbol=symbol, record_count=len(depmap_data))
+                # console.print(f"  [green]✓[/green] Generated DepMap data sheet with {len(depmap_data)} records")
+
+                # Track external protein expression processing (currently commented out)
+                # logger.info("Starting external protein expression processing", symbol=symbol)
+                # console.print("  [yellow]→[/yellow] Generating external proteomics data...")
+                # external_protein_handler.build_normal_proteomics_sheet(uniprotkb_ac, output)
+                # logger.info("External proteomics data generated", symbol=symbol)
+                # console.print("  [green]✓[/green] Generated external proteomics data sheet")
+
+                # Track gene expression processing (currently commented out)
+                # logger.info("Starting gene expression processing", symbol=symbol)
+                # console.print("  [yellow]→[/yellow] Generating gene expression data...")
                 # gene_handler.build_normal_gene_expression_sheet(uniprotkb_ac, output)
                 # gene_handler.build_gene_expression_sheet(uniprotkb_ac, output)
                 # gene_handler.build_gene_tumor_normal_ratios_sheet(uniprotkb_ac, output)
+                # logger.info("Gene expression data generated", symbol=symbol)
+                # console.print("  [green]✓[/green] Generated gene expression data sheets")
 
-
-
-                # umap_handler.get_umap_data(uniprotkb_ac, output)
-
-                cell_line_set = umap_handler.get_cell_lines(uniprotkb_ac)
-
-                console.print(f"Found {len(cell_line_set)} cell lines for {symbol}")
-
-                # Generate WCE data sheet
-                if cell_line_set:
-                    wce_data = wce_handler.build_wce_data_sheet(uniprotkb_ac, cell_line_set, output)
-                    console.print(f"Generated WCE data sheet with {len(wce_data)} records for {symbol}")
-                else:
-                    console.print(f"No cell lines found for {symbol}, skipping WCE data generation", style="yellow")
-
-                # Generate DepMap data sheet
-                # depmap_data = depmap_handler.build_dep_map_data_sheet([uniprotkb_ac], file_path=output, cell_line_set=cell_line_set)
-                # console.print(f"Generated DepMap data sheet with {len(depmap_data)} records for {symbol}")
-
-                # Generate normal proteomics data sheet
-                # external_protein_handler.build_normal_proteomics_sheet(uniprotkb_ac, output)
-                # console.print(f"Generated normal proteomics data sheet records for {symbol}")
-
-                wce_handler.build_cell_line_sigmoidal_curves(cell_line_set, output)
-                # external_protein_handler.build_study_specific_sheet(
-                #     uniprotkb_ac, output
-                # )
-                console.print(
-                    f"Generated study specific proteomics data sheet records for {symbol}"
-                )
-
-                console.print(f"Completed processing {symbol}")
+                logger.info(f"Completed processing for protein {i}/{len(symbol_mappings)}", 
+                           symbol=symbol, uniprotkb_ac=uniprotkb_ac)
+                console.print(f"  [bold green]✓[/bold green] Completed processing {symbol}")
 
             except Exception as e:
-                logger.exception(f"Failed to process {symbol}", error=str(e))
+                logger.exception(f"Failed to process protein {i}/{len(symbol_mappings)}", 
+                               symbol=symbol, uniprotkb_ac=uniprotkb_ac, error=str(e))
                 console.print(
-                    f"Warning: Failed to process {symbol}: {e!s}", style="yellow"
+                    f"  [bold red]✗[/bold red] Failed to process {symbol}: {e!s}", style="red"
                 )
                 continue
 
-        console.print(f"Gene expression data saved to: {output}")
-        console.print(f"Processed {len(symbol_mappings)} proteins successfully")
+        # Generate summary
+        processed_count = len(symbol_mappings)
+        logger.info("Data processing completed", 
+                   processed_proteins=processed_count, output_file=output)
+        
+        console.print(f"\n[bold green]✓[/bold green] Gene expression data saved to: {output}")
+        console.print(f"[bold green]✓[/bold green] Processed {processed_count} proteins successfully")
 
         # Show file information
         if Path(output).exists():
             file_size = Path(output).stat().st_size
-            console.print(f"File size: {file_size:,} bytes")
+            console.print(f"[bold]File size: {file_size:,} bytes[/bold]")
+            
+            # Log file information
+            logger.info("Output file details", 
+                       file_path=output, file_size_bytes=file_size, file_size_mb=file_size/1024/1024)
 
     except Exception as e:
         logger.exception("Failed to generate gene expression data", error=str(e))
