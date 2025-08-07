@@ -31,9 +31,6 @@ class DepMapDataHandler(BaseDataHandler):
         Returns:
             A list of DepMapData objects
         """
-        # This is not working correctly, need to use the ccle_model_id to actually map
-        # TODO: Investigate the name mismatch.
-        # Okay, this is actually working.
         try:
             dep_map_data = self.umap_client._get_dep_map_data(
                 uniprotkb_acs=uniprotkb_acs, ccle_model_ids=[]

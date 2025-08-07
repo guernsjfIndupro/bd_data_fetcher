@@ -53,16 +53,14 @@ class GeneExpressionDataHandler(BaseDataHandler):
         Returns:
             A list of RNAGeneExpressionData objects.
         """
-        return self._safe_api_call(
-            lambda: [
-                obj
-                for obj in self.umap_client._get_rna_gene_expression_data(
-                    uniprotkb_acs=[uniprotkb_ac]
-                )
-                if not obj.is_cancer
-            ],
-            uniprotkb_ac=uniprotkb_ac,
-        )
+        try:
+            all_data = self.umap_client._get_rna_gene_expression_data(
+                uniprotkb_acs=[uniprotkb_ac]
+            )
+            return [obj for obj in all_data if not obj.is_cancer]
+        except Exception as e:
+            logger.exception(f"Error in API call for {uniprotkb_ac}: {e}")
+            return []
 
     @lru_cache
     def get_all_primary_sites(self) -> list[str]:
@@ -83,9 +81,11 @@ class GeneExpressionDataHandler(BaseDataHandler):
         Returns:
             A list of RNAGeneExpressionData objects.
         """
-        return self._safe_api_call(
-            self.umap_client._get_rna_gene_expression_data, uniprotkb_acs=[uniprotkb_ac]
-        )
+        try:
+            return self.umap_client._get_rna_gene_expression_data(uniprotkb_acs=[uniprotkb_ac])
+        except Exception as e:
+            logger.exception(f"Error in API call for {uniprotkb_ac}: {e}")
+            return []
 
     def build_normal_gene_expression_sheet(self, uniprotkb_ac: str, file_path: str):
         """

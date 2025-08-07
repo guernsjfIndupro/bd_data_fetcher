@@ -211,26 +211,4 @@ class BaseDataHandler:
 
         return data_df
 
-    def _safe_api_call(self, api_method, *args, **kwargs):
-        """
-        Common error handling for API calls.
 
-        Args:
-            api_method: The API method to call
-            *args: Arguments for the API method
-            **kwargs: Keyword arguments for the API method
-
-        Returns:
-            Result of the API call or empty list on error
-        """
-        try:
-            # If it's a lambda function, don't pass keyword arguments
-            if callable(api_method) and api_method.__name__ == "<lambda>":
-                return api_method(*args)
-            else:
-                return api_method(*args, **kwargs)
-        except Exception as e:
-            # Extract uniprotkb_ac from kwargs for error message
-            uniprotkb_ac = kwargs.get("uniprotkb_ac", "unknown")
-            logger.exception(f"Error in API call for {uniprotkb_ac}: {e}")
-            return []

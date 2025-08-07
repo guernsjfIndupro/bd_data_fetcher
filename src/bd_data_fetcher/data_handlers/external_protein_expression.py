@@ -48,19 +48,16 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
         """
         Get the normal proteomics data for a given uniprotkb_ac.
         """
-        return self._safe_api_call(
-            self.umap_client._get_proteomics_normal_expression_data,
-            uniprotkb_ac=uniprotkb_ac,
-        )
+        try:
+            return self.umap_client._get_proteomics_normal_expression_data(uniprotkb_ac=uniprotkb_ac)
+        except Exception as e:
+            logger.exception(f"Error in API call for {uniprotkb_ac}: {e}")
+            return []
 
     def build_normal_proteomics_sheet(self, uniprotkb_ac: str, file_path: str):
         """
         Build a normal proteomics sheet for a given uniprotkb_ac.
         Creates a matrix where each row represents a gene and each column represents an indication.
-
-        TODO: This needs to handle the edge case where
-        the first protein does not have data, it currently
-        generates a sheet with no data exceept for the gene column.
         """
         sheet_name = SheetNames.NORMAL_PROTEOMICS_DATA.value
 
@@ -69,6 +66,10 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
         data_df = pd.DataFrame([obj.dict() for obj in normal_proteomics_data])
 
         # Use the matrix sheet creation method
+        if data_df.empty:
+            logger.warning(f"No normal proteomics data found for {uniprotkb_ac}")
+            return None
+        
         return self._create_matrix_sheet(
             file_path=file_path,
             sheet_name=sheet_name,
@@ -87,11 +88,14 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
         """
         Get external proteomics data for given uniprotkb_acs and study_ids.
         """
-        return self._safe_api_call(
-            self.umap_client._get_external_proteomics_data, 
-            uniprotkb_acs=uniprotkb_acs,
-            study_ids=study_ids or []
-        )
+        try:
+            return self.umap_client._get_external_proteomics_data(
+                uniprotkb_acs=uniprotkb_acs,
+                study_ids=study_ids or []
+            )
+        except Exception as e:
+            logger.exception(f"Error in API call for external proteomics data: {e}")
+            return []
 
     def build_study_specific_sheet(self, uniprotkb_ac: str, file_path: str):
         """
@@ -102,9 +106,11 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
         sheet_name = SheetNames.STUDY_SPECIFIC_DATA.value
         
         # Get study metadata to map study names to study IDs
-        study_metadata_response = self._safe_api_call(
-            self.umap_client._get_study_metadata
-        )
+        try:
+            study_metadata_response = self.umap_client._get_study_metadata()
+        except Exception as e:
+            logger.exception(f"Error in API call for study metadata: {e}")
+            return None
         
         # Create mapping from study names to study IDs for regular studies and tumor_normal_studies
         study_name_to_id = {}

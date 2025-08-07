@@ -62,28 +62,8 @@ def setup_logging(log_level: str = "INFO", log_file: str | None = None):
         )
 
 
-@app.command()
-def data(
-    symbols: list[str] = typer.Argument(
-        ..., help="List of protein symbols (e.g., EGFR TP53 BRCA1)"
-    ),
-    output: str = typer.Option(
-        "output.xlsx", "--output", "-o", help="Output Excel file name"
-    ),
-    verbose: bool = typer.Option(
-        False, "--verbose", "-v", help="Enable verbose logging"
-    ),
-):
-    """
-    Generate gene expression data for protein symbols.
-
-    Maps protein symbols to UniProtKB accession numbers and generates comprehensive gene expression data.
-    """
-    log_level = "DEBUG" if verbose else "INFO"
-    setup_logging(log_level)
-    logger = structlog.get_logger(__name__)
-
-    # Display data handlers information first
+def display_data_handlers_overview():
+    """Display a formatted table showing all available data handlers and their descriptions."""
     console.print("\n[bold cyan]Data Handlers Overview:[/bold cyan]")
     handlers_table = Table(title="Available Data Handlers")
     handlers_table.add_column("Handler", style="cyan", width=30)
@@ -117,6 +97,31 @@ def data(
     )
 
     console.print(handlers_table)
+
+
+@app.command()
+def data(
+    symbols: list[str] = typer.Argument(
+        ..., help="List of protein symbols (e.g., EGFR TP53 BRCA1)"
+    ),
+    output: str = typer.Option(
+        "output.xlsx", "--output", "-o", help="Output Excel file name"
+    ),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose logging"
+    ),
+):
+    """
+    Generate gene expression data for protein symbols.
+
+    Maps protein symbols to UniProtKB accession numbers and generates comprehensive gene expression data.
+    """
+    log_level = "DEBUG" if verbose else "INFO"
+    setup_logging(log_level)
+    logger = structlog.get_logger(__name__)
+
+    # Display data handlers information first
+    display_data_handlers_overview()
 
     try:
         # Initialize UMap client
