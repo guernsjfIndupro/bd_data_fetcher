@@ -218,8 +218,8 @@ class DepMapGraph(BaseGraph):
 
                     # Save the plot with protein name in filename
                     safe_protein_name = protein.replace(' ', '_').replace('/', '_').replace('\\', '_')
-                    filename = f"depmap_copy_number_scatter_plot_{safe_protein_name}.png"
-                    if not self.save_graph(plt.gcf(), filename, output_dir):
+                    filename = f"copy_number_scatter_plot_{safe_protein_name}.png"
+                    if not self.save_graph(plt.gcf(), filename, output_dir, "depmap"):
                         logger.error(f"Failed to save copy number scatter plot for protein: {protein}")
                         continue
 

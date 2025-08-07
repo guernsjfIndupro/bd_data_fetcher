@@ -152,7 +152,7 @@ class GeneExpressionGraph(BaseGraph):
 
             # Save the plot
             filename = "normal_gene_expression_heatmap.png"
-            if not self.save_graph(plt.gcf(), filename, output_dir):
+            if not self.save_graph(plt.gcf(), filename, output_dir, "gene_expression"):
                 logger.error("Failed to save normal gene expression heatmap")
                 return False
 
@@ -333,7 +333,7 @@ class GeneExpressionGraph(BaseGraph):
                 safe_gene = gene.replace(' ', '_').replace('/', '_')
                 filename = f"tumor_normal_boxplot_{safe_gene}.png"
                 
-                if not self.save_graph(plt.gcf(), filename, output_dir):
+                if not self.save_graph(plt.gcf(), filename, output_dir, "gene_expression"):
                     logger.error(f"Failed to save tumor-normal boxplot for gene: {gene}")
                     return False
                 

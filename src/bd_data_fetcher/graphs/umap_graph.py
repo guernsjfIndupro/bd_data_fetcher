@@ -218,7 +218,7 @@ class UMapGraph(BaseGraph):
                 safe_replicate_id = str(replicate_set_id).replace(' ', '_').replace('/', '_')
                 filename = f"volcano_plot_{target_protein}_{safe_cell_line}_{safe_chemistry}_{safe_replicate_id}.png"
 
-                if not self.save_graph(plt.gcf(), filename, output_dir):
+                if not self.save_graph(plt.gcf(), filename, output_dir, "umap"):
                     logger.error(f"Failed to save volcano plot for replicate set {replicate_set_id}")
                     return False
 

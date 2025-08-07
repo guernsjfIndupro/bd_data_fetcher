@@ -89,19 +89,24 @@ class BaseGraph(ABC):
             List of supported sheet names
         """
 
-    def save_graph(self, fig: plt.Figure, filename: str, output_dir: str) -> bool:
+    def save_graph(self, fig: plt.Figure, filename: str, output_dir: str, subfolder: str = None) -> bool:
         """Save a matplotlib figure to file.
 
         Args:
             fig: Matplotlib figure to save
             filename: Name of the output file
             output_dir: Directory to save the file
+            subfolder: Optional subfolder to create within output_dir
 
         Returns:
             True if saved successfully, False otherwise
         """
         try:
-            output_path = Path(output_dir) / filename
+            if subfolder:
+                output_path = Path(output_dir) / subfolder / filename
+            else:
+                output_path = Path(output_dir) / filename
+            
             output_path.parent.mkdir(parents=True, exist_ok=True)
             fig.savefig(output_path, dpi=300, bbox_inches='tight')
             plt.close(fig)

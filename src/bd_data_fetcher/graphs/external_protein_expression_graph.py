@@ -85,7 +85,7 @@ class ExternalProteinExpressionGraph(BaseGraph):
             #     tissue_means = df.groupby('tissue_type')['expression_level'].mean()
             #     ax.bar(tissue_means.index, tissue_means.values)
 
-            return self.save_graph(fig, "normal_proteomics_expression.png", output_dir)
+            return self.save_graph(fig, "normal_proteomics_expression.png", output_dir, "external_protein_expression")
 
         except Exception as e:
             logger.exception(f"Error generating normal proteomics expression: {e}")
@@ -113,7 +113,7 @@ class ExternalProteinExpressionGraph(BaseGraph):
             #     protein_means = df.groupby('protein')['expression_level'].mean()
             #     ax.bar(protein_means.index, protein_means.values)
 
-            return self.save_graph(fig, "external_proteomics_comparison.png", output_dir)
+            return self.save_graph(fig, "external_proteomics_comparison.png", output_dir, "external_protein_expression")
 
         except Exception as e:
             logger.exception(f"Error generating external proteomics comparison: {e}")
@@ -142,7 +142,7 @@ class ExternalProteinExpressionGraph(BaseGraph):
             #     pivot_data = df.pivot(index='protein', columns='tissue_type', values='expression_level')
             #     sns.heatmap(pivot_data, ax=ax, cmap='viridis', annot=True, fmt='.2f')
 
-            return self.save_graph(fig, "tissue_expression_heatmap.png", output_dir)
+            return self.save_graph(fig, "tissue_expression_heatmap.png", output_dir, "external_protein_expression")
 
         except Exception as e:
             logger.exception(f"Error generating tissue expression heatmap: {e}")

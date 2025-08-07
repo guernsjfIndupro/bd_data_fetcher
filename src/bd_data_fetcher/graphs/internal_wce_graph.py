@@ -174,7 +174,7 @@ class InternalWCEGraph(BaseGraph):
 
                 # Save the plot
                 filename = f"wce_bar_plot_{gene.replace(' ', '_').replace('/', '_')}.png"
-                if not self.save_graph(plt.gcf(), filename, output_dir):
+                if not self.save_graph(plt.gcf(), filename, output_dir, "wce"):
                     logger.error(f"Failed to save plot for gene: {gene}")
                     return False
 
@@ -346,7 +346,7 @@ class InternalWCEGraph(BaseGraph):
 
                 # Save the plot
                 filename = f"sigmoidal_curve_{cell_line.replace(' ', '_').replace('/', '_')}.png"
-                if not self.save_graph(plt.gcf(), filename, output_dir):
+                if not self.save_graph(plt.gcf(), filename, output_dir, "wce"):
                     logger.error(f"Failed to save sigmoidal curve plot for cell line: {cell_line}")
                     return False
 
