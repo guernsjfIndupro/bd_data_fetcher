@@ -141,8 +141,8 @@ class ExcelGraphAnalyzer:
         total_count = len(data_type_mapping)
 
         for data_type in data_type_mapping.keys():
-            # Only process UMap-related and gene expression graphs; skip others
-            allowed_graph_types = {"umap_data", "cell_line_targeting", "gene_expression", "normal_gene_expression", "gene_tumor_normal_ratios"}
+            # Only process DepMap copy number scatter plot; skip others
+            allowed_graph_types = {"depmap_data"}
             if data_type not in allowed_graph_types:
                 console.print(f"[yellow]Skipping unsupported graph type: {data_type}[/yellow]")
                 continue
@@ -188,8 +188,8 @@ class ExcelGraphAnalyzer:
                 console.print(f"[red]✗ Unsupported data type: {data_type}[/red]")
                 continue
 
-            # Only process UMap-related and gene expression graphs; skip others
-            allowed_graph_types = {"umap_data", "cell_line_targeting", "gene_expression", "normal_gene_expression", "gene_tumor_normal_ratios"}
+            # Only process DepMap copy number scatter plot; skip others
+            allowed_graph_types = {"depmap_data"}
             if data_type not in allowed_graph_types:
                 console.print(f"[yellow]Skipping unsupported graph type: {data_type}[/yellow]")
                 continue
