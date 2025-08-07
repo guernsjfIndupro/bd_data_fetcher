@@ -3,6 +3,7 @@
 import sys
 from pathlib import Path
 
+import requests
 import structlog
 import typer
 from rich.console import Console
@@ -82,15 +83,62 @@ def data(
     setup_logging(log_level)
     logger = structlog.get_logger(__name__)
 
+    # Display data handlers information first
+    console.print("\n[bold cyan]Data Handlers Overview:[/bold cyan]")
+    handlers_table = Table(title="Available Data Handlers")
+    handlers_table.add_column("Handler", style="cyan", width=30)
+    handlers_table.add_column("Description", style="green", width=60)
+    handlers_table.add_column("Output Sheets", style="yellow", width=40)
+
+    handlers_table.add_row(
+        "GeneExpressionDataHandler",
+        "Retrieves and prepares gene expression data including normal expression, all expression data, and tumor/normal ratios",
+        "normal_gene_expression, gene_expression, gene_tumor_normal_ratios"
+    )
+    handlers_table.add_row(
+        "uMapDataHandler", 
+        "Retrieves and prepares uMap data",
+        "umap_data, cell_line_targeting"
+    )
+    handlers_table.add_row(
+        "WCEDataHandler",
+        "Processes Whole Cell Extract DIA data and generates sigmoidal curves for cell lines",
+        "wce_data, cell_line_sigmoidal_curves"
+    )
+    handlers_table.add_row(
+        "DepMapDataHandler",
+        "Handles DepMap dependency mapping data for cancer cell lines",
+        "depmap_data"
+    )
+    handlers_table.add_row(
+        "ExternalProteinExpressionDataHandler",
+        "Manages external proteomics data including normal expression and study-specific data",
+        "normal_proteomics_data, external_proteomics_data, study_specific_data"
+    )
+
+    console.print(handlers_table)
+
     try:
         # Initialize UMap client
         umap_client = UMapServiceClient()
 
         # Map protein symbols to UniProtKB accession numbers
         console.print(
-            f"Mapping {len(symbols)} protein symbols to UniProtKB accession numbers..."
+            f"\nMapping {len(symbols)} protein symbols to UniProtKB accession numbers..."
         )
-        symbol_mappings = umap_client.map_protein(symbols)
+        
+        # Add timeout and error handling for the API call
+        try:
+            symbol_mappings = umap_client.map_protein(symbols)
+        except requests.exceptions.Timeout:
+            console.print("Error: API request timed out. Please check your internet connection and try again.", style="red")
+            sys.exit(1)
+        except requests.exceptions.ConnectionError:
+            console.print("Error: Could not connect to the API server. Please check your internet connection.", style="red")
+            sys.exit(1)
+        except Exception as e:
+            console.print(f"Error: Failed to map protein symbols: {e}", style="red")
+            sys.exit(1)
 
         if not symbol_mappings:
             console.print(
@@ -119,7 +167,7 @@ def data(
 
         # Generate gene expression data for each protein
         console.print(
-            f"Generating data for {len(symbol_mappings)} proteins..."
+            f"\n[bold]Generating data for {len(symbol_mappings)} proteins...[/bold]"
         )
 
         for symbol, uniprotkb_ac in symbol_mappings.items():

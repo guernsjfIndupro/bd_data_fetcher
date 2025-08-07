@@ -16,6 +16,8 @@ from bd_data_fetcher.api.umap_models import (
     ReciprocalMicroMapData,
     ReplicateSet,
     RNAGeneExpressionData,
+    StudyMetadata,
+    StudyMetadataResponse,
     TissueSampleDiaIntensity,
 )
 
@@ -65,7 +67,7 @@ class UMapServiceClient:
             Response data
         """
         self.endpoint_url = self.base_url + endpoint
-        response = self.session.get(self.endpoint_url, params=params)
+        response = self.session.get(self.endpoint_url, params=params, timeout=30)
         response.raise_for_status()
         return response.json()
 
@@ -86,7 +88,7 @@ class UMapServiceClient:
             Response data
         """
         self.endpoint_url = self.base_url + endpoint
-        response = self.session.post(self.endpoint_url, json=data, params=params)
+        response = self.session.post(self.endpoint_url, json=data, params=params, timeout=30)
         response.raise_for_status()
         return response.json()
 
@@ -321,12 +323,13 @@ class UMapServiceClient:
         return self._post(endpoint=endpoint, data=studies, params=params)
 
     def _get_external_proteomics_data(
-        self, uniprotkb_acs: list[str]
+        self, uniprotkb_acs: list[str], study_ids: list[int]
     ) -> list[ExternalProteinExpressionData]:
         """
         Get external proteomics data from the UMap service.
         """
         params = {
+            "study_ids": study_ids,
             "uniprotkb_acs": uniprotkb_acs,
         }
         endpoint = "external/study/data"
@@ -441,3 +444,25 @@ class UMapServiceClient:
         )
         validated_data = [DepMapData(**data) for data in unvalidated_data]
         return validated_data
+
+    def _get_study_metadata(
+        self, page_request: int = 1, page_size: int = 200
+    ) -> StudyMetadataResponse:
+        """
+        Get study metadata from the UMap service.
+
+        Args:
+            page_request: Page number to request (default: 1)
+            page_size: Number of items per page (default: 200)
+
+        Returns:
+            StudyMetadataResponse object containing paginated study metadata
+        """
+        endpoint = "external/study/metadata/"
+        params = {
+            "page_request": page_request,
+            "page_size": page_size,
+        }
+        
+        response_data = self._get(endpoint=endpoint, params=params)
+        return StudyMetadataResponse(**response_data)

@@ -1,5 +1,6 @@
 import enum
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -132,6 +133,7 @@ class ExternalProteinExpressionData(BaseModel):
     sample_name: str
     sample_type: str
     study_name: str
+    study_id: int | None = None
     paired_sample_group: str | None = None
 
 
@@ -297,3 +299,31 @@ class AnalysisResultsResponse(BaseModel):
     total_items: int
     total_pages: int
     data: list[AnalysisResult]
+
+
+# Study Metadata Models
+class StudyMetadata(BaseModel):
+    id: int
+    study_name: str
+    link: str | None = None
+    clinical_data_context: str | None = None
+    experiment_type: str | None = None
+    study_type: str | None = None
+    pdc_study_id: str | None = None
+    study_id: str | None = None
+    study_submitter_id: str | None = None
+    project_name: str | None = None
+    program_name: str | None = None
+    authors: str | None = None
+    normalization_method: str | None = None
+    additional_column_metadata: dict[str, Any] | None = None
+    num_of_samples: int
+
+
+class StudyMetadataResponse(BaseModel):
+    current_page: int
+    next_page: int
+    page_size: int
+    total_items: int
+    total_pages: int
+    data: list[StudyMetadata]
