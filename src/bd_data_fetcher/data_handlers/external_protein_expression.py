@@ -175,7 +175,6 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
                 continue
 
             # Calculate average tumor and average normal values
-            # TODO: Double check this logic
             tumor_data = study_data[study_data['tissue_type'].str.contains('Tumor', case=False, na=False)]
             normal_data = study_data[study_data['tissue_type'].str.contains('Normal', case=False, na=False)]
 

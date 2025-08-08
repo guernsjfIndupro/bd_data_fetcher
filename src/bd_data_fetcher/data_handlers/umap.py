@@ -111,8 +111,6 @@ class uMapDataHandler(BaseDataHandler):
     def get_cell_lines(self, uniprotkb_ac: str) -> set[str]:
         """
         Get all cell lines that have targeted the given protein.
-
-        # TODO: Determine if we should use the name or the ID.
         """
         replicate_sets = self.get_targeted_replicate_sets(uniprotkb_ac)
         return {
