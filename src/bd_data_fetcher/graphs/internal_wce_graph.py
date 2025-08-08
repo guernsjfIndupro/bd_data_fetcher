@@ -57,10 +57,10 @@ class InternalWCEGraph(BaseGraph):
     def _generate_wce_data_plots(self, output_dir: str) -> bool:
         """Generate plots for WCE data.
 
-        Creates bar plots showing:
+        Creates separate bar plots for each protein showing:
         - X-axis: Cell lines
         - Y-axis: Weight normalized intensity ranking
-        - Grouped by onc lineage
+        - Bars grouped by onc lineage with different colors
 
         Args:
             output_dir: Directory to save the graphs
@@ -76,7 +76,7 @@ class InternalWCEGraph(BaseGraph):
                 return False
 
             # Check for required columns
-            required_columns = ['Cell Line', 'Weight Normalized Intensity Ranking', 'Onc Lineage']
+            required_columns = ['Cell Line', 'Weight Normalized Intensity Ranking', 'Onc Lineage', 'Gene']
             missing_columns = [col for col in required_columns if col not in df.columns]
             if missing_columns:
                 logger.error(f"Missing required columns in WCE data: {missing_columns}")
@@ -86,43 +86,107 @@ class InternalWCEGraph(BaseGraph):
             df['Weight Normalized Intensity Ranking'] = pd.to_numeric(df['Weight Normalized Intensity Ranking'], errors='coerce')
 
             # Remove rows with NaN values
-            df = df.dropna(subset=['Weight Normalized Intensity Ranking', 'Cell Line', 'Onc Lineage'])
+            df = df.dropna(subset=['Weight Normalized Intensity Ranking', 'Cell Line', 'Onc Lineage', 'Gene'])
 
             if df.empty:
                 logger.error("No valid numeric data found in WCE data")
                 return False
 
-            # Set up the plot
-            plt.figure(figsize=(15, 10))
-            sns.set_style("whitegrid")
+            # Get unique proteins
+            proteins = df['Gene'].unique()
+            
+            if len(proteins) == 0:
+                logger.error("No proteins found in WCE data")
+                return False
 
-            # Create box plot by onc lineage
-            sns.boxplot(
-                data=df,
-                x='Onc Lineage',
-                y='Weight Normalized Intensity Ranking',
-                palette='Set3'
-            )
+            logger.info(f"Generating WCE plots for {len(proteins)} proteins")
 
-            # Customize the plot
-            plt.title('WCE Data - Weight Normalized Intensity Ranking by Onc Lineage', fontsize=16, fontweight='bold', pad=25)
-            plt.xlabel('Onc Lineage', fontsize=14, fontweight='bold')
-            plt.ylabel('Weight Normalized Intensity Ranking', fontsize=14, fontweight='bold')
+            success_count = 0
+            total_count = len(proteins)
 
-            # Rotate x-axis labels for better readability
-            plt.xticks(rotation=45, ha='right')
+            # Get all unique cell lines and onc lineages for consistent plotting
+            all_cell_lines = df[['Cell Line', 'Onc Lineage']].drop_duplicates().sort_values(['Onc Lineage', 'Cell Line'])
+            
+            # Generate one plot per protein
+            for protein in proteins:
+                try:
+                    # Filter data for current protein
+                    protein_df = df[df['Gene'] == protein]
+                    
+                    # Average data across the same cell line
+                    if not protein_df.empty:
+                        protein_avg_df = protein_df.groupby(['Cell Line', 'Onc Lineage'])['Weight Normalized Intensity Ranking'].mean().reset_index()
+                    else:
+                        protein_avg_df = pd.DataFrame(columns=['Cell Line', 'Onc Lineage', 'Weight Normalized Intensity Ranking'])
 
-            plt.tight_layout()
+                    # Create complete dataset with all cell lines
+                    complete_df = all_cell_lines.copy()
+                    complete_df = complete_df.merge(
+                        protein_avg_df, 
+                        on=['Cell Line', 'Onc Lineage'], 
+                        how='left'
+                    )
+                    
+                    # Fill missing values with 0 or NaN (will show as empty bars)
+                    complete_df['Weight Normalized Intensity Ranking'] = complete_df['Weight Normalized Intensity Ranking'].fillna(0)
 
-            # Save the plot
-            filename = "wce_intensity_ranking.png"
-            output_path = Path(output_dir) / "internal_wce" / filename
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            plt.savefig(output_path, dpi=300, bbox_inches='tight')
-            plt.close()
+                    # Get unique onc lineages for color mapping
+                    onc_lineages = complete_df['Onc Lineage'].unique()
+                    colors = plt.cm.Set3(np.linspace(0, 1, len(onc_lineages)))
+                    color_map = dict(zip(onc_lineages, colors))
 
-            logger.info(f"Saved WCE intensity ranking plot: {output_path}")
-            return True
+                    # Set up the plot
+                    plt.figure(figsize=(max(12, len(complete_df) * 0.4), 8))
+                    sns.set_style("whitegrid")
+
+                    # Create bar plot
+                    x_positions = range(len(complete_df))
+                    bars = plt.bar(
+                        x_positions,
+                        complete_df['Weight Normalized Intensity Ranking'],
+                        color=[color_map[lineage] for lineage in complete_df['Onc Lineage']],
+                        alpha=0.8,
+                        edgecolor='black',
+                        linewidth=0.5
+                    )
+
+                    # Customize the plot
+                    plt.title(f'WCE Data - {protein} Intensity Ranking by Cell Line (Averaged)', fontsize=16, fontweight='bold', pad=25)
+                    plt.xlabel('Cell Lines', fontsize=14, fontweight='bold')
+                    plt.ylabel('Weight Normalized Intensity Ranking', fontsize=14, fontweight='bold')
+
+                    # Set x-axis labels
+                    plt.xticks(x_positions, complete_df['Cell Line'], rotation=45, ha='right')
+
+                    # Add legend for onc lineages
+                    legend_elements = [plt.Rectangle((0,0),1,1, facecolor=color_map[lineage], alpha=0.8, edgecolor='black', linewidth=0.5, label=lineage) 
+                                     for lineage in onc_lineages]
+                    plt.legend(handles=legend_elements, title='Onc Lineage', loc='upper right', fontsize=10)
+
+                    # Remove top and right borders
+                    ax = plt.gca()
+                    ax.spines['top'].set_visible(False)
+                    ax.spines['right'].set_visible(False)
+
+                    plt.tight_layout()
+
+                    # Save the plot
+                    safe_protein = protein.replace(' ', '_').replace('/', '_').replace('\\', '_')
+                    filename = f"wce_intensity_ranking_{safe_protein}.png"
+                    output_path = Path(output_dir) / "internal_wce" / filename
+                    output_path.parent.mkdir(parents=True, exist_ok=True)
+                    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+                    plt.close()
+
+                    logger.info(f"Saved WCE plot for {protein}: {output_path}")
+                    success_count += 1
+
+                except Exception as e:
+                    logger.exception(f"Error generating WCE plot for protein {protein}: {e}")
+                    continue
+
+            logger.info(f"Generated {success_count}/{total_count} WCE plots successfully")
+            return success_count > 0
 
         except Exception as e:
             logger.exception(f"Error generating WCE data plots: {e}")
