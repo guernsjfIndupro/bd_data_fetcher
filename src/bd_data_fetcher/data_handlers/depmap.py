@@ -66,7 +66,6 @@ class DepMapDataHandler(BaseDataHandler):
             "Onc Primary Disease",
             "Onc Subtype",
             "TPM Log2",
-            "Gene Level Copy Number",
         ]
 
         # Manage CSV file
@@ -86,7 +85,6 @@ class DepMapDataHandler(BaseDataHandler):
                 "Onc Primary Disease": "onc_primary_disease",
                 "Onc Subtype": "onc_subtype",
                 "TPM Log2": "tpm_log2",
-                "Gene Level Copy Number": "gene_level_copy_number",
             }
             transformed_df = self._transform_data_to_csv_format(
                 data_df, column_mapping

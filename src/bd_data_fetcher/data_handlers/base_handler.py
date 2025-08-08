@@ -117,10 +117,12 @@ class BaseDataHandler:
             return
         else:
             # Both have data, concatenate them
-            # Ensure both DataFrames have the same columns to avoid dtype issues
-            all_columns = list(set(existing_df.columns) | set(data_df.columns))
+            # Preserve column order by using existing_df columns as the base
+            existing_columns = list(existing_df.columns)
+            new_columns = [col for col in data_df.columns if col not in existing_columns]
+            all_columns = existing_columns + new_columns
             
-            # Reindex both DataFrames to have the same columns
+            # Reindex both DataFrames to have the same columns in the correct order
             existing_df = existing_df.reindex(columns=all_columns, fill_value=None)
             data_df = data_df.reindex(columns=all_columns, fill_value=None)
             
@@ -141,12 +143,20 @@ class BaseDataHandler:
         Returns:
             Transformed DataFrame
         """
+        # Get the ordered list of CSV columns from the mapping
+        csv_columns = list(column_mapping.keys())
+        
         transformed_data = []
         for _, row in data_df.iterrows():
             transformed_row = {}
             for csv_col, df_col in column_mapping.items():
                 if df_col in row:
-                    transformed_row[csv_col] = row[df_col]
+                    value = row[df_col]
+                    # Handle None values for is_mapped field
+                    if df_col == "is_mapped" and value is None:
+                        transformed_row[csv_col] = False
+                    else:
+                        transformed_row[csv_col] = value
                 # Handle missing columns with appropriate defaults
                 elif df_col == "is_mapped":
                     transformed_row[csv_col] = False
@@ -158,7 +168,13 @@ class BaseDataHandler:
                     transformed_row[csv_col] = ""
             transformed_data.append(transformed_row)
 
-        return pd.DataFrame(transformed_data)
+        # Create DataFrame with explicit column order
+        result_df = pd.DataFrame(transformed_data)
+        if not result_df.empty:
+            # Ensure columns are in the correct order
+            result_df = result_df[csv_columns]
+        
+        return result_df
 
     def _create_matrix_csv(
         self,
