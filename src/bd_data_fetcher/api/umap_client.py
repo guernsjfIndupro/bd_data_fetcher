@@ -66,7 +66,7 @@ class UMapServiceClient:
             Response data
         """
         self.endpoint_url = self.base_url + endpoint
-        response = self.session.get(self.endpoint_url, params=params, timeout=30)
+        response = self.session.get(self.endpoint_url, params=params, timeout=300)
         response.raise_for_status()
         return response.json()
 
@@ -87,7 +87,7 @@ class UMapServiceClient:
             Response data
         """
         self.endpoint_url = self.base_url + endpoint
-        response = self.session.post(self.endpoint_url, json=data, params=params, timeout=30)
+        response = self.session.post(self.endpoint_url, json=data, params=params, timeout=300)
         response.raise_for_status()
         return response.json()
 

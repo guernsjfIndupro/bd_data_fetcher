@@ -256,9 +256,20 @@ class WCEDataHandler(BaseDataHandler):
                 curve_data = self.build_generalizable_sigmoidal_curve(cell_line_data)
                 x_axis, y_axis = curve_data
 
-                # Create rows for X and Y axes
-                x_row = [cell_line_name, 0] + list(x_axis[:500])  # First 500 points
-                y_row = [cell_line_name, 1] + list(y_axis[:500])   # First 500 points
+                # Create rows for X and Y axes with evenly spaced 500 points between 0 and 1000
+                # Sample 500 points evenly spaced between 0 and 1000
+                x_range = np.linspace(0, 1000, 500)
+                
+                # Interpolate the curve values at these evenly spaced x points
+                if len(x_axis) > 0:
+                    # Use numpy interpolation to get y values at the evenly spaced x points
+                    y_sampled = np.interp(x_range, x_axis, y_axis)
+                else:
+                    # Fallback if curve is empty
+                    y_sampled = np.zeros(500)
+                
+                x_row = [cell_line_name, 0] + list(x_range)
+                y_row = [cell_line_name, 1] + list(y_sampled)
 
                 # Create DataFrame for this cell line
                 cell_line_df = pd.DataFrame([x_row, y_row], columns=columns)
