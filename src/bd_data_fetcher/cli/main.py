@@ -69,13 +69,13 @@ def display_data_handlers_overview() -> None:
     handlers_info = [
         (
             "GeneExpressionDataHandler",
-            "Processes gene expression data from RNA sequencing studies",
+            "Processes gene expression data from TCGA/GTEX",
             "normal_gene_expression.csv, gene_expression.csv, gene_tumor_normal_ratios.csv"
         ),
         (
             "uMapDataHandler",
-            "Manages UMap analysis results and cell line targeting data",
-            "umap_data.csv, cell_line_targeting.csv"
+            "Manages UMap analysis results",
+            "umap_data.csv"
         ),
         (
             "WCEDataHandler",
@@ -84,7 +84,7 @@ def display_data_handlers_overview() -> None:
         ),
         (
             "DepMapDataHandler",
-            "Handles DepMap dependency mapping data",
+            "Handles DepMap cell line data",
             "depmap_data.csv"
         ),
         (
