@@ -206,7 +206,7 @@ class DepMapGraph(BaseGraph):
                     plt.grid(True, alpha=0.3)
 
                     # Add legend
-                    plt.legend(title='Onc Lineage', loc='upper right', fontsize=10)
+                    plt.legend(title='Onc Lineage', loc='upper left', fontsize=10)
 
                     # Remove top and right borders
                     ax = plt.gca()

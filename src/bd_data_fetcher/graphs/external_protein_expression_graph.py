@@ -93,12 +93,12 @@ class ExternalProteinExpressionGraph(BaseGraph):
             # Create heatmap
             sns.heatmap(
                 heatmap_data,
-                annot=True,
-                fmt='.2f',
-                cmap='RdBu_r',
-                center=0,
+                annot=False,
+                cmap='Blues',
                 cbar_kws={'label': 'Log2 Expression'},
-                square=False
+                linewidths=0.2,
+                linecolor='white',
+                square=True
             )
 
             # Customize the plot
