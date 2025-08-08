@@ -1,4 +1,4 @@
-"""CLI graphing functionality for analyzing Excel files and generating graphs."""
+"""CLI graphing functionality for analyzing CSV files and generating graphs."""
 
 import logging
 from pathlib import Path
@@ -8,7 +8,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from bd_data_fetcher.data_handlers.utils import SheetNames
+from bd_data_fetcher.data_handlers.utils import FileNames
 from bd_data_fetcher.graphs import (
     DepMapGraph,
     ExternalProteinExpressionGraph,
@@ -21,100 +21,86 @@ logger = logging.getLogger(__name__)
 console = Console()
 
 
-class ExcelGraphAnalyzer:
-    """Analyzes Excel files and generates graphs based on available sheets.
+class CSVGraphAnalyzer:
+    """Analyzes CSV files and generates graphs based on available files.
 
-    This class automatically detects which data types are present in the Excel file
+    This class automatically detects which data types are present in the CSV directory
     and generates appropriate visualizations for each data type.
     """
 
-    def __init__(self, excel_file_path: str):
-        """Initialize the Excel graph analyzer.
+    def __init__(self, data_dir_path: str):
+        """Initialize the CSV graph analyzer.
 
         Args:
-            excel_file_path: Path to the Excel file to analyze
+            data_dir_path: Path to the directory containing CSV files to analyze
         """
-        self.excel_file_path = Path(excel_file_path)
+        self.data_dir_path = Path(data_dir_path)
         self.graph_generators: dict[str, object] = {
-            SheetNames.DEPMAP_DATA.value: DepMapGraph,
-            SheetNames.NORMAL_PROTEOMICS_DATA.value: ExternalProteinExpressionGraph,
-            SheetNames.EXTERNAL_PROTEOMICS_DATA.value: ExternalProteinExpressionGraph,
-            SheetNames.NORMAL_GENE_EXPRESSION.value: GeneExpressionGraph,
-            SheetNames.GENE_EXPRESSION.value: GeneExpressionGraph,
-            SheetNames.GENE_TUMOR_NORMAL_RATIOS.value: GeneExpressionGraph,
-            SheetNames.WCE_DATA.value: InternalWCEGraph,
-            SheetNames.CELL_LINE_SIGMOIDAL_CURVES.value: InternalWCEGraph,
-            SheetNames.UMAP_DATA.value: UMapGraph,
-            SheetNames.CELL_LINE_TARGETING.value: UMapGraph,
+            FileNames.DEPMAP_DATA.value: DepMapGraph,
+            FileNames.NORMAL_PROTEOMICS_DATA.value: ExternalProteinExpressionGraph,
+            FileNames.EXTERNAL_PROTEOMICS_DATA.value: ExternalProteinExpressionGraph,
+            FileNames.STUDY_SPECIFIC_DATA.value: ExternalProteinExpressionGraph,
+            FileNames.NORMAL_GENE_EXPRESSION.value: GeneExpressionGraph,
+            FileNames.GENE_EXPRESSION.value: GeneExpressionGraph,
+            FileNames.GENE_TUMOR_NORMAL_RATIOS.value: GeneExpressionGraph,
+            FileNames.WCE_DATA.value: InternalWCEGraph,
+            FileNames.CELL_LINE_SIGMOIDAL_CURVES.value: InternalWCEGraph,
+            FileNames.UMAP_DATA.value: UMapGraph,
+            FileNames.CELL_LINE_TARGETING.value: UMapGraph,
         }
 
-    def analyze_excel_file(self) -> dict[str, list[str]]:
-        """Analyze the Excel file and identify available data types.
+    def analyze_csv_directory(self) -> dict[str, list[str]]:
+        """Analyze the CSV directory and identify available data types.
 
         Returns:
-            Dictionary mapping data types to their corresponding sheet names
+            Dictionary mapping data types to their corresponding file names
         """
         try:
-            if not self.excel_file_path.exists():
-                console.print(f"[red]Error: Excel file not found: {self.excel_file_path}[/red]")
+            if not self.data_dir_path.exists():
+                console.print(f"[red]Error: Data directory not found: {self.data_dir_path}[/red]")
                 return {}
 
-            # Read Excel file to get sheet names
-            excel_file = pd.ExcelFile(self.excel_file_path)
-            available_sheets = excel_file.sheet_names
+            # Read CSV directory to get file names
+            csv_files = list(self.data_dir_path.glob("*.csv"))
+            available_files = [f.name for f in csv_files]
 
-            console.print(f"[green]Found {len(available_sheets)} sheets in Excel file[/green]")
+            console.print(f"[green]Found {len(available_files)} CSV files in directory[/green]")
 
-            # Map sheets to data types
+            # Map files to data types
             data_type_mapping = {}
-            for sheet_name in available_sheets:
+            for file_name in available_files:
                 for data_type in self.graph_generators.keys():
-                    if sheet_name == data_type:
+                    if file_name == data_type:
                         if data_type not in data_type_mapping:
                             data_type_mapping[data_type] = []
-                        data_type_mapping[data_type].append(sheet_name)
+                        data_type_mapping[data_type].append(file_name)
                         break
 
             return data_type_mapping
 
         except Exception as e:
-            console.print(f"[red]Error analyzing Excel file: {e}[/red]")
+            console.print(f"[red]Error analyzing CSV directory: {e}[/red]")
             return {}
 
     def display_analysis_results(self, data_type_mapping: dict[str, list[str]]) -> None:
-        """Display the analysis results in a formatted table.
+        """Display analysis results in a formatted table.
 
         Args:
-            data_type_mapping: Dictionary mapping data types to sheet names
+            data_type_mapping: Dictionary mapping data types to file names
         """
         if not data_type_mapping:
-            console.print("[yellow]No supported data types found in Excel file[/yellow]")
+            console.print("[yellow]No supported data types found[/yellow]")
             return
 
-        table = Table(title="Excel File Analysis Results")
+        table = Table(title="CSV Directory Analysis Results")
         table.add_column("Data Type", style="cyan")
-        table.add_column("Graph Generator", style="green")
-        table.add_column("Sheets", style="yellow")
-        table.add_column("Supported Graphs", style="blue")
+        table.add_column("Files Found", style="green")
+        table.add_column("Graph Generator", style="yellow")
 
-        # TODO: This is a placeholder for the actual graphs that will be generated.
-
-        for data_type, sheets in data_type_mapping.items():
-            graph_class = self.graph_generators[data_type]
-            graph_class(str(self.excel_file_path))
-            supported_graphs = [
-                "Distribution plots",
-                "Comparison charts",
-                "Heatmaps",
-                "Specialized plots"
-            ]
-
-            table.add_row(
-                data_type,
-                graph_class.__name__,
-                ", ".join(sheets),
-                ", ".join(supported_graphs)
-            )
+        for data_type, files in data_type_mapping.items():
+            graph_class = self.graph_generators.get(data_type, "Unknown")
+            graph_name = graph_class.__name__ if hasattr(graph_class, '__name__') else str(graph_class)
+            table.add_row(data_type, ", ".join(files), graph_name)
 
         console.print(table)
 
@@ -123,7 +109,7 @@ class ExcelGraphAnalyzer:
 
         Args:
             output_dir: Directory to save generated graphs
-            data_type_mapping: Dictionary mapping data types to sheet names
+            data_type_mapping: Dictionary mapping data types to file names
 
         Returns:
             True if all graphs were generated successfully, False otherwise
@@ -142,7 +128,7 @@ class ExcelGraphAnalyzer:
 
         for data_type in data_type_mapping.keys():
             # Only process DepMap copy number scatter plot; skip others
-            allowed_graph_types = {"depmap_data"}
+            allowed_graph_types = {"depmap_data.csv"}
             if data_type not in allowed_graph_types:
                 console.print(f"[yellow]Skipping unsupported graph type: {data_type}[/yellow]")
                 continue
@@ -151,7 +137,7 @@ class ExcelGraphAnalyzer:
 
             try:
                 graph_class = self.graph_generators[data_type]
-                graph_instance = graph_class(str(self.excel_file_path))
+                graph_instance = graph_class(str(self.data_dir_path))
 
                 if graph_instance.generate_graphs(str(output_path)):
                     console.print(f"[green]✓ Successfully generated graphs for {data_type}[/green]")
@@ -189,7 +175,7 @@ class ExcelGraphAnalyzer:
                 continue
 
             # Only process DepMap copy number scatter plot; skip others
-            allowed_graph_types = {"depmap_data"}
+            allowed_graph_types = {"depmap_data.csv"}
             if data_type not in allowed_graph_types:
                 console.print(f"[yellow]Skipping unsupported graph type: {data_type}[/yellow]")
                 continue
@@ -199,7 +185,7 @@ class ExcelGraphAnalyzer:
             try:
 
                 graph_class = self.graph_generators[data_type]
-                graph_instance = graph_class(str(self.excel_file_path))
+                graph_instance = graph_class(str(self.data_dir_path))
 
                 if graph_instance.generate_graphs(str(output_path)):
                     console.print(f"[green]✓ Successfully generated graphs for {data_type}[/green]")
@@ -215,22 +201,22 @@ class ExcelGraphAnalyzer:
 
 
 def analyze_and_graph(
-    excel_file: str = typer.Argument(..., help="Path to the Excel file to analyze"),
+    data_dir: str = typer.Argument(..., help="Path to the directory containing CSV files to analyze"),
     output_dir: str = typer.Option("./graphs", help="Directory to save generated graphs"),
     data_types: list[str] | None = typer.Option(None, help="Specific data types to process"),
     show_analysis: bool = typer.Option(True, help="Show analysis results before generating graphs"),
 ) -> None:
-    """Analyze Excel file and generate graphs based on available data.
+    """Analyze CSV files and generate graphs based on available data.
 
-    This command analyzes an Excel file generated by the main data fetcher
+    This command analyzes CSV files generated by the main data fetcher
     and automatically generates appropriate visualizations for each data type found.
     """
     try:
         # Initialize analyzer
-        analyzer = ExcelGraphAnalyzer(excel_file)
+        analyzer = CSVGraphAnalyzer(data_dir)
 
-        # Analyze the Excel file
-        data_type_mapping = analyzer.analyze_excel_file()
+        # Analyze the CSV directory
+        data_type_mapping = analyzer.analyze_csv_directory()
 
         if not data_type_mapping:
             console.print("[red]No supported data types found. Exiting.[/red]")

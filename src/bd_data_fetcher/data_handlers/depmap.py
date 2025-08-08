@@ -7,7 +7,7 @@ import structlog
 
 from bd_data_fetcher.api.umap_models import DepMapData
 from bd_data_fetcher.data_handlers.base_handler import BaseDataHandler
-from bd_data_fetcher.data_handlers.utils import SheetNames
+from bd_data_fetcher.data_handlers.utils import FileNames
 
 logger = structlog.get_logger(__name__)
 
@@ -50,14 +50,14 @@ class DepMapDataHandler(BaseDataHandler):
             logger.exception(f"Error retrieving DepMap data for {uniprotkb_acs}: {e}")
             return []
 
-    def build_dep_map_data_sheet(
-        self, uniprotkb_acs: list[str], file_path: str, cell_line_set: set[str]
+    def build_dep_map_data_csv(
+        self, uniprotkb_acs: list[str], folder_path: str, cell_line_set: set[str]
     ):
         """
-        Build a DepMap data sheet for given uniprotkb_acs.
-        Stores DepMap data in the Excel sheet, appending to existing data.
+        Build a DepMap data CSV file for given uniprotkb_acs.
+        Stores DepMap data in the CSV file, appending to existing data.
         """
-        sheet_name = SheetNames.DEPMAP_DATA.value
+        file_name = FileNames.DEPMAP_DATA.value
         columns = [
             "Protein Symbol",
             "UniProtKB AC",
@@ -69,8 +69,8 @@ class DepMapDataHandler(BaseDataHandler):
             "Gene Level Copy Number",
         ]
 
-        # Manage Excel sheet
-        self._manage_excel_sheet(file_path, sheet_name, columns)
+        # Manage CSV file
+        self._manage_csv_file(folder_path, file_name, columns)
 
         # Retrieve DepMap data
         dep_map_data = self.get_dep_map_data(uniprotkb_acs, cell_line_set)
@@ -88,11 +88,11 @@ class DepMapDataHandler(BaseDataHandler):
                 "TPM Log2": "tpm_log2",
                 "Gene Level Copy Number": "gene_level_copy_number",
             }
-            transformed_df = self._transform_data_to_sheet_format(
+            transformed_df = self._transform_data_to_csv_format(
                 data_df, column_mapping
             )
 
-            # Append to Excel sheet
-            self._append_to_excel_sheet(file_path, sheet_name, transformed_df, columns)
+            # Append to CSV file
+            self._append_to_csv_file(folder_path, file_name, transformed_df, columns)
 
         return data_df

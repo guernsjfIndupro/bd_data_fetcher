@@ -2,7 +2,7 @@ import pandas as pd
 import structlog
 
 from bd_data_fetcher.data_handlers.base_handler import BaseDataHandler
-from bd_data_fetcher.data_handlers.utils import SheetNames
+from bd_data_fetcher.data_handlers.utils import FileNames
 
 logger = structlog.get_logger(__name__)
 
@@ -29,12 +29,12 @@ class uMapDataHandler(BaseDataHandler):
             )
         ]
 
-    def get_umap_data(self, uniprotkb_ac: str, file_path: str):
+    def get_umap_data_csv(self, uniprotkb_ac: str, folder_path: str):
         """
-        Build a UMap analysis results sheet for a given uniprotkb_ac.
-        Stores all analysis results data in the Excel sheet, appending to existing data.
+        Build a UMap analysis results CSV file for a given uniprotkb_ac.
+        Stores all analysis results data in the CSV file, appending to existing data.
         """
-        sheet_name = SheetNames.UMAP_DATA.value
+        file_name = FileNames.UMAP_DATA.value
         columns = [
             "Replicate Set ID",
             "Cell Line",
@@ -48,14 +48,14 @@ class uMapDataHandler(BaseDataHandler):
             "Binder",
         ]
 
-        # Manage Excel sheet
-        self._manage_excel_sheet(file_path, sheet_name, columns)
+        # Manage CSV file
+        self._manage_csv_file(folder_path, file_name, columns)
 
         # Get targeted replicate sets
         replicate_sets = self.get_targeted_replicate_sets(uniprotkb_ac)
 
         if replicate_sets:
-            # Transform data to match the sheet column structure
+            # Transform data to match the CSV column structure
             transformed_data = []
 
             for replicate_set in replicate_sets:
@@ -101,9 +101,9 @@ class uMapDataHandler(BaseDataHandler):
             transformed_df = pd.DataFrame(transformed_data)
 
             if not transformed_df.empty:
-                # Append to Excel sheet
-                self._append_to_excel_sheet(
-                    file_path, sheet_name, transformed_df, columns
+                # Append to CSV file
+                self._append_to_csv_file(
+                    folder_path, file_name, transformed_df, columns
                 )
 
         return replicate_sets

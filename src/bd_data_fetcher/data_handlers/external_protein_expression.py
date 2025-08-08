@@ -6,11 +6,9 @@ from bd_data_fetcher.api.umap_models import (
     ProteomicsNormalExpressionData,
 )
 from bd_data_fetcher.data_handlers.base_handler import BaseDataHandler
-from bd_data_fetcher.data_handlers.utils import SheetNames
+from bd_data_fetcher.data_handlers.utils import FileNames
 
 logger = structlog.get_logger(__name__)
-
-
 
 regular_studies = {
     "Prospective Breast BI Proteome": "Breast Invasive Carcinoma",
@@ -52,25 +50,25 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
             logger.exception(f"Error in API call for {uniprotkb_ac}: {e}")
             return []
 
-    def build_normal_proteomics_sheet(self, uniprotkb_ac: str, file_path: str):
+    def build_normal_proteomics_csv(self, uniprotkb_ac: str, folder_path: str):
         """
-        Build a normal proteomics sheet for a given uniprotkb_ac.
+        Build a normal proteomics CSV file for a given uniprotkb_ac.
         Creates a matrix where each row represents a gene and each column represents an indication.
         """
-        sheet_name = SheetNames.NORMAL_PROTEOMICS_DATA.value
+        file_name = FileNames.NORMAL_PROTEOMICS_DATA.value
 
         # Retrieve normal proteomics data
         normal_proteomics_data = self.get_normal_proteomics_data(uniprotkb_ac)
         data_df = pd.DataFrame([obj.dict() for obj in normal_proteomics_data])
 
-        # Use the matrix sheet creation method
+        # Use the matrix CSV creation method
         if data_df.empty:
             logger.warning(f"No normal proteomics data found for {uniprotkb_ac}")
             return None
 
-        return self._create_matrix_sheet(
-            file_path=file_path,
-            sheet_name=sheet_name,
+        return self._create_matrix_csv(
+            folder_path=folder_path,
+            file_name=file_name,
             data_df=data_df,
             group_field="indication",
             value_field="log2_expression",
@@ -93,13 +91,13 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
             logger.exception(f"Error in API call for external proteomics data: {e}")
             return []
 
-    def build_study_specific_sheet(self, uniprotkb_ac: str, file_path: str):
+    def build_study_specific_csv(self, uniprotkb_ac: str, folder_path: str):
         """
-        Build a study-specific sheet for a given uniprotkb_ac.
+        Build a study-specific CSV file for a given uniprotkb_ac.
         Creates a matrix where each row represents a gene and each column represents a study-indication combination,
         with values being tumor-normal ratios (tumor - normal) for each study-indication.
         """
-        sheet_name = SheetNames.STUDY_SPECIFIC_DATA.value
+        file_name = FileNames.STUDY_SPECIFIC_DATA.value
 
         # Get study metadata to map study names to study IDs
         try:
@@ -238,10 +236,10 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
         # Create results DataFrame
         results_df = pd.DataFrame(results)
 
-        # Use the matrix sheet creation method
-        return self._create_matrix_sheet(
-            file_path=file_path,
-            sheet_name=sheet_name,
+        # Use the matrix CSV creation method
+        return self._create_matrix_csv(
+            folder_path=folder_path,
+            file_name=file_name,
             data_df=results_df,
             group_field="indication",
             value_field="tumor_normal_diff",

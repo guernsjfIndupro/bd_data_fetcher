@@ -1,13 +1,14 @@
 """DepMap data visualization graphs."""
 
 import logging
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from bd_data_fetcher.data_handlers.utils import SheetNames
+from bd_data_fetcher.data_handlers.utils import FileNames
 from bd_data_fetcher.graphs.base_graph import BaseGraph
 
 logger = logging.getLogger(__name__)
@@ -19,14 +20,6 @@ class DepMapGraph(BaseGraph):
     This class handles visualization of DepMap dependency data,
     including gene dependency scores and cell line information.
     """
-
-    def get_supported_sheets(self) -> list[str]:
-        """Get list of sheet names that this graph class can process.
-
-        Returns:
-            List of supported sheet names
-        """
-        return [SheetNames.DEPMAP_DATA.value, SheetNames.WCE_DATA.value]
 
     def generate_graphs(self, output_dir: str) -> bool:
         """Generate all relevant graphs for DepMap data.
@@ -41,7 +34,7 @@ class DepMapGraph(BaseGraph):
 
         # Load data if not already loaded
         if not self.data:
-            if not self.load_excel_data():
+            if not self.load_csv_data():
                 return False
 
         success = True
@@ -70,13 +63,13 @@ class DepMapGraph(BaseGraph):
         """
         try:
             # Get DepMap data
-            depmap_df = self.get_sheet_data(SheetNames.DEPMAP_DATA.value)
+            depmap_df = self.get_data_for_file(FileNames.DEPMAP_DATA.value)
             if depmap_df is None or depmap_df.empty:
                 logger.error("No DepMap data available")
                 return False
 
             # Get WCE data
-            wce_df = self.get_sheet_data(SheetNames.WCE_DATA.value)
+            wce_df = self.get_data_for_file(FileNames.WCE_DATA.value)
             if wce_df is None or wce_df.empty:
                 logger.error("No WCE data available")
                 return False
@@ -219,11 +212,14 @@ class DepMapGraph(BaseGraph):
                     # Save the plot with protein name in filename
                     safe_protein_name = protein.replace(' ', '_').replace('/', '_').replace('\\', '_')
                     filename = f"copy_number_scatter_plot_{safe_protein_name}.png"
-                    if not self.save_graph(plt.gcf(), filename, output_dir, "depmap"):
-                        logger.error(f"Failed to save copy number scatter plot for protein: {protein}")
-                        continue
-
+                    
+                    # Create output directory and save
+                    output_path = Path(output_dir) / "depmap" / filename
+                    output_path.parent.mkdir(parents=True, exist_ok=True)
+                    plt.savefig(output_path, dpi=300, bbox_inches='tight')
                     plt.close()
+                    
+                    logger.info(f"Saved graph: {output_path}")
                     success_count += 1
                     logger.info(f"Successfully generated copy number scatter plot for protein: {protein}")
 

@@ -15,7 +15,7 @@ import structlog
 
 from bd_data_fetcher.api.umap_models import RNAGeneExpressionData
 from bd_data_fetcher.data_handlers.base_handler import BaseDataHandler
-from bd_data_fetcher.data_handlers.utils import SheetNames
+from bd_data_fetcher.data_handlers.utils import FileNames
 
 logger = structlog.get_logger(__name__)
 
@@ -30,15 +30,15 @@ class GeneExpressionDataHandler(BaseDataHandler):
     - Retrieval of all gene expression data for a given study
     - Calculating tumor/normal ratios for all primary_sites
 
-    Each function is responsible for generating a sheet in the excel file.
+    Each function is responsible for generating a CSV file in the output folder.
 
-    The excel file is generated in the same directory as the script that calls this class.
+    The CSV files are generated in the same directory as the script that calls this class.
 
-    The sheet names are:
+    The file names are:
 
-    - normal_gene_expression
-    - gene_expression
-    - gene_tumor_normal_ratios
+    - normal_gene_expression.csv
+    - gene_expression.csv
+    - gene_tumor_normal_ratios.csv
     """
 
     def _retrieve_normal_gene_expression(
@@ -87,20 +87,20 @@ class GeneExpressionDataHandler(BaseDataHandler):
             logger.exception(f"Error in API call for {uniprotkb_ac}: {e}")
             return []
 
-    def build_normal_gene_expression_sheet(self, uniprotkb_ac: str, file_path: str):
+    def build_normal_gene_expression_csv(self, uniprotkb_ac: str, folder_path: str):
         """
-        Build a normal gene expression sheet for a given uniprotkb_ac.
+        Build a normal gene expression CSV file for a given uniprotkb_ac.
         """
-        sheet_name = SheetNames.NORMAL_GENE_EXPRESSION.value
+        file_name = FileNames.NORMAL_GENE_EXPRESSION.value
 
         # Retrieve normal gene expression data
         normal_gene_expression = self._retrieve_normal_gene_expression(uniprotkb_ac)
         normal_df = pd.DataFrame([obj.dict() for obj in normal_gene_expression])
 
-        # Use the matrix sheet creation method
-        return self._create_matrix_sheet(
-            file_path=file_path,
-            sheet_name=sheet_name,
+        # Use the matrix CSV creation method
+        return self._create_matrix_csv(
+            folder_path=folder_path,
+            file_name=file_name,
             data_df=normal_df,
             group_field="primary_site",
             value_field="expression_value",
@@ -110,16 +110,16 @@ class GeneExpressionDataHandler(BaseDataHandler):
 
         return normal_df
 
-    def build_gene_expression_sheet(self, uniprotkb_ac: str, file_path: str):
+    def build_gene_expression_csv(self, uniprotkb_ac: str, folder_path: str):
         """
-        Build a gene expression sheet for a given study.
-        Stores all gene expression data in the Excel sheet, appending to existing data.
+        Build a gene expression CSV file for a given study.
+        Stores all gene expression data in the CSV file, appending to existing data.
         """
-        sheet_name = SheetNames.GENE_EXPRESSION.value
+        file_name = FileNames.GENE_EXPRESSION.value
         columns = ["Gene", "Expression Value", "Primary Site", "Is Cancer"]
 
-        # Manage Excel sheet
-        self._manage_excel_sheet(file_path, sheet_name, columns)
+        # Manage CSV file
+        self._manage_csv_file(folder_path, file_name, columns)
 
         # Retrieve gene expression data
         gene_expression = self._retrieve_gene_expression_data(uniprotkb_ac)
@@ -133,75 +133,74 @@ class GeneExpressionDataHandler(BaseDataHandler):
                 "Primary Site": "primary_site",
                 "Is Cancer": "is_cancer",
             }
-            transformed_df = self._transform_data_to_sheet_format(
+            transformed_df = self._transform_data_to_csv_format(
                 data_df, column_mapping
             )
 
-            # Append to Excel sheet
-            self._append_to_excel_sheet(file_path, sheet_name, transformed_df, columns)
+            # Append to CSV file
+            self._append_to_csv_file(folder_path, file_name, transformed_df, columns)
 
         return data_df
 
-    def build_gene_tumor_normal_ratios_sheet(self, uniprotkb_ac: str, file_path: str):
+    def build_gene_tumor_normal_ratios_csv(self, uniprotkb_ac: str, folder_path: str):
         """
-        Build a gene tumor normal ratios sheet for a given uniprotkb_ac.
-        Calculates tumor/normal ratios for each primary site and stores them in the sheet.
+        Build a gene tumor-normal ratios CSV file for a given uniprotkb_ac.
+        Creates a matrix where each row represents a gene and each column represents a primary site,
+        with values being tumor-normal ratios (tumor - normal) for each primary site.
         """
-        sheet_name = SheetNames.GENE_TUMOR_NORMAL_RATIOS.value
+        file_name = FileNames.GENE_TUMOR_NORMAL_RATIOS.value
 
-        # Retrieve gene expression data (contains both normal and tumor data)
-        all_gene_expression = self._retrieve_gene_expression_data(uniprotkb_ac)
+        # Retrieve gene expression data
+        gene_expression = self._retrieve_gene_expression_data(uniprotkb_ac)
+        data_df = pd.DataFrame([obj.dict() for obj in gene_expression])
 
-        # Convert to DataFrame
-        all_df = pd.DataFrame([obj.dict() for obj in all_gene_expression])
+        if data_df.empty:
+            logger.warning(f"No gene expression data found for {uniprotkb_ac}")
+            return None
 
-        if not all_df.empty:
-            # Separate normal and tumor data from the same dataset
-            normal_df = all_df[all_df["is_cancer"] is False]
-            tumor_df = all_df[all_df["is_cancer"] is True]
+        # Calculate tumor-normal ratios for each primary site
+        results = []
+        primary_sites = data_df['primary_site'].unique()
 
-            if not normal_df.empty and not tumor_df.empty:
-                # Calculate average normal expression per primary site
-                normal_avg = normal_df.groupby("primary_site")[
-                    "expression_value"
-                ].mean()
+        for primary_site in primary_sites:
+            site_data = data_df[data_df['primary_site'] == primary_site]
+            
+            # Separate tumor and normal data
+            tumor_data = site_data[site_data['is_cancer'] == True]
+            normal_data = site_data[site_data['is_cancer'] == False]
 
-                # Calculate average tumor expression per primary site
-                tumor_avg = tumor_df.groupby("primary_site")["expression_value"].mean()
+            if not tumor_data.empty and not normal_data.empty:
+                avg_tumor = tumor_data['expression_value'].mean()
+                avg_normal = normal_data['expression_value'].mean()
+                tumor_normal_ratio = avg_tumor - avg_normal
 
-                # Calculate tumor/normal ratios (tumor - normal)
-                # Only calculate ratios for primary sites that have both normal and tumor data
-                common_sites = set(normal_avg.index) & set(tumor_avg.index)
-                ratios = pd.Series(index=common_sites)
+                # Get the symbol (should be the same for all rows in this primary site)
+                symbol = site_data['symbol'].iloc[0]
 
-                for site in common_sites:
-                    ratios[site] = tumor_avg[site] - normal_avg[site]
+                results.append({
+                    'symbol': symbol,
+                    'primary_site': primary_site,
+                    'tumor_normal_ratio': tumor_normal_ratio,
+                    'avg_tumor': avg_tumor,
+                    'avg_normal': avg_normal,
+                    'num_tumor_samples': len(tumor_data),
+                    'num_normal_samples': len(normal_data)
+                })
 
-                # Get gene symbol
-                gene_symbol = normal_df["symbol"].iloc[0] if not normal_df.empty else ""
+        if not results:
+            logger.info(f"No gene expression data available for tumor-normal calculations for uniprotkb_ac: {uniprotkb_ac}")
+            return None
 
-                # Create a DataFrame with the ratio data for matrix processing
-                ratio_data = []
-                for site, ratio in ratios.items():
-                    ratio_data.append(
-                        {
-                            "primary_site": site,
-                            "ratio_value": ratio,
-                            "symbol": gene_symbol,
-                        }
-                    )
+        # Create results DataFrame
+        results_df = pd.DataFrame(results)
 
-                ratio_df = pd.DataFrame(ratio_data)
-
-                # Use the matrix sheet creation method
-                return self._create_matrix_sheet(
-                    file_path=file_path,
-                    sheet_name=sheet_name,
-                    data_df=ratio_df,
-                    group_field="primary_site",
-                    value_field="ratio_value",
-                    gene_field="symbol",
-                    gene_column_name="Gene",
-                )
-
-        return all_df
+        # Use the matrix CSV creation method
+        return self._create_matrix_csv(
+            folder_path=folder_path,
+            file_name=file_name,
+            data_df=results_df,
+            group_field="primary_site",
+            value_field="tumor_normal_ratio",
+            gene_field="symbol",
+            gene_column_name="Gene",
+        )

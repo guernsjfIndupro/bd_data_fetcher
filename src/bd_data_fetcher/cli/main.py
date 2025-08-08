@@ -30,73 +30,74 @@ app = typer.Typer(
 console = Console()
 
 
-# Configure logging
-def setup_logging(log_level: str = "INFO", log_file: str | None = None):
-    """Set up structured logging."""
-    processors = [
-        structlog.stdlib.filter_by_level,
-        structlog.stdlib.add_logger_name,
-        structlog.stdlib.add_log_level,
-        structlog.stdlib.PositionalArgumentsFormatter(),
-        structlog.processors.TimeStamper(fmt="iso"),
-        structlog.processors.StackInfoRenderer(),
-        structlog.processors.format_exc_info,
-        structlog.processors.UnicodeDecoder(),
+def setup_logging(log_level: str) -> None:
+    """Setup structured logging with the specified log level."""
+    import logging
+
+    logging.basicConfig(
+        format="%(message)s",
+        stream=sys.stdout,
+        level=getattr(logging, log_level.upper()),
+    )
+
+    structlog.configure(
+        processors=[
+            structlog.stdlib.filter_by_level,
+            structlog.stdlib.add_logger_name,
+            structlog.stdlib.add_log_level,
+            structlog.stdlib.PositionalArgumentsFormatter(),
+            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.processors.StackInfoRenderer(),
+            structlog.processors.format_exc_info,
+            structlog.processors.UnicodeDecoder(),
+            structlog.processors.JSONRenderer()
+        ],
+        context_class=dict,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        wrapper_class=structlog.stdlib.BoundLogger,
+        cache_logger_on_first_use=True,
+    )
+
+
+def display_data_handlers_overview() -> None:
+    """Display an overview of available data handlers."""
+    table = Table(title="Data Handlers Overview")
+    table.add_column("Handler", style="cyan")
+    table.add_column("Description", style="green")
+    table.add_column("Output Files", style="yellow")
+
+    handlers_info = [
+        (
+            "GeneExpressionDataHandler",
+            "Processes gene expression data from RNA sequencing studies",
+            "normal_gene_expression.csv, gene_expression.csv, gene_tumor_normal_ratios.csv"
+        ),
+        (
+            "uMapDataHandler",
+            "Manages UMap analysis results and cell line targeting data",
+            "umap_data.csv, cell_line_targeting.csv"
+        ),
+        (
+            "WCEDataHandler",
+            "Processes Whole Cell Extract DIA proteomics data",
+            "wce_data.csv, cell_line_sigmoidal_curves.csv"
+        ),
+        (
+            "DepMapDataHandler",
+            "Handles DepMap dependency mapping data",
+            "depmap_data.csv"
+        ),
+        (
+            "ExternalProteinExpressionDataHandler",
+            "Manages external proteomics data from various cancer studies",
+            "normal_proteomics_data.csv, external_proteomics_data.csv, study_specific_data.csv"
+        ),
     ]
 
-    if log_file:
-        processors.append(structlog.processors.JSONRenderer())
-        structlog.configure(
-            processors=processors,
-            wrapper_class=structlog.stdlib.BoundLogger,
-            logger_factory=structlog.stdlib.LoggerFactory(),
-            cache_logger_on_first_use=True,
-        )
-    else:
-        processors.append(structlog.dev.ConsoleRenderer())
-        structlog.configure(
-            processors=processors,
-            wrapper_class=structlog.stdlib.BoundLogger,
-            logger_factory=structlog.stdlib.LoggerFactory(),
-            cache_logger_on_first_use=True,
-        )
+    for handler, description, outputs in handlers_info:
+        table.add_row(handler, description, outputs)
 
-
-def display_data_handlers_overview():
-    """Display a formatted table showing all available data handlers and their descriptions."""
-    console.print("\n[bold cyan]Data Handlers Overview:[/bold cyan]")
-    handlers_table = Table(title="Available Data Handlers")
-    handlers_table.add_column("Handler", style="cyan", width=30)
-    handlers_table.add_column("Description", style="green", width=60)
-    handlers_table.add_column("Output Sheets", style="yellow", width=40)
-
-    handlers_table.add_row(
-        "GeneExpressionDataHandler",
-        "Retrieves and prepares gene expression data including normal expression, all expression data, and tumor/normal ratios",
-        "normal_gene_expression, gene_expression, gene_tumor_normal_ratios"
-    )
-    handlers_table.add_row(
-        "uMapDataHandler",
-        "Retrieves and prepares uMap data",
-        "umap_data, cell_line_targeting"
-    )
-    handlers_table.add_row(
-        "WCEDataHandler",
-        "Processes Whole Cell Extract DIA data and generates sigmoidal curves for cell lines",
-        "wce_data, cell_line_sigmoidal_curves"
-    )
-    handlers_table.add_row(
-        "DepMapDataHandler",
-        "Handles DepMap dependency mapping data for cancer cell lines",
-        "depmap_data"
-    )
-    handlers_table.add_row(
-        "ExternalProteinExpressionDataHandler",
-        "Manages external proteomics data including normal expression and study-specific data",
-        "normal_proteomics_data, external_proteomics_data, study_specific_data"
-    )
-
-    console.print(handlers_table)
+    console.print(table)
 
 
 @app.command()
@@ -104,8 +105,8 @@ def data(
     symbols: list[str] = typer.Argument(
         ..., help="List of protein symbols (e.g., EGFR TP53 BRCA1)"
     ),
-    output: str = typer.Option(
-        "output.xlsx", "--output", "-o", help="Output Excel file name"
+    output_dir: str = typer.Option(
+        "output", "--output-dir", "-o", help="Output directory for CSV files"
     ),
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Enable verbose logging"
@@ -163,14 +164,12 @@ def data(
         console.print(table)
         console.print(f"Successfully mapped {len(symbol_mappings)} proteins")
 
-        # Initialize data handlers with logging
-        logger.info("Initializing data handlers", handlers=["GeneExpression", "UMap", "WCE", "DepMap", "ExternalProtein"])
-        GeneExpressionDataHandler()
+        # Initialize data handlers
+        gene_handler = GeneExpressionDataHandler()
         umap_handler = uMapDataHandler()
         wce_handler = WCEDataHandler()
         depmap_handler = DepMapDataHandler()
         external_protein_handler = ExternalProteinExpressionDataHandler()
-        logger.info("Data handlers initialized successfully")
 
         # Generate gene expression data for each protein
         console.print(
@@ -178,73 +177,28 @@ def data(
         )
 
         for i, (symbol, uniprotkb_ac) in enumerate(symbol_mappings.items(), 1):
-            logger.info(f"Starting processing for protein {i}/{len(symbol_mappings)}",
-                       symbol=symbol, uniprotkb_ac=uniprotkb_ac)
             console.print(f"\n[bold cyan]Processing {symbol} ({uniprotkb_ac})...[/bold cyan]")
 
             try:
-                # Track UMap data processing
-                logger.info("Starting UMap data processing", symbol=symbol)
-                console.print("  [yellow]→[/yellow] Retrieving UMap cell line data...")
-
+                # Get cell lines
                 cell_line_set = umap_handler.get_cell_lines(uniprotkb_ac)
+                console.print(f"  [green]✓[/green] Found {len(cell_line_set)} cell lines")
 
-                logger.info("UMap cell lines retrieved",
-                           symbol=symbol, cell_line_count=len(cell_line_set))
-                console.print(f"  [green]✓[/green] Found {len(cell_line_set)} cell lines for {symbol}")
-
-                # Track WCE data processing
+                # Generate all data types
                 if cell_line_set:
-                    logger.info("Starting WCE data processing",
-                               symbol=symbol, cell_line_count=len(cell_line_set))
-                    console.print("  [yellow]→[/yellow] Generating WCE data sheet...")
-
-                    wce_data = wce_handler.build_wce_data_sheet(uniprotkb_ac, cell_line_set, output)
-
-                    logger.info("WCE data sheet generated",
-                               symbol=symbol, record_count=len(wce_data))
-                    console.print(f"  [green]✓[/green] Generated WCE data sheet with {len(wce_data)} records")
+                    wce_data = wce_handler.build_wce_data_csv(uniprotkb_ac, cell_line_set, output_dir)
+                    wce_handler.build_cell_line_sigmoidal_curves_csv(cell_line_set, output_dir)
+                    depmap_data = depmap_handler.build_dep_map_data_csv([uniprotkb_ac], folder_path=output_dir, cell_line_set=cell_line_set)
+                    external_protein_handler.build_normal_proteomics_csv(uniprotkb_ac, output_dir)
+                    external_protein_handler.build_study_specific_csv(uniprotkb_ac, output_dir)
+                    gene_handler.build_normal_gene_expression_csv(uniprotkb_ac, output_dir)
+                    gene_handler.build_gene_expression_csv(uniprotkb_ac, output_dir)
+                    gene_handler.build_gene_tumor_normal_ratios_csv(uniprotkb_ac, output_dir)
+                    umap_handler.get_umap_data_csv(uniprotkb_ac, output_dir)
                 else:
-                    logger.warning("Skipping WCE data generation - no cell lines found", symbol=symbol)
-                    console.print(f"  [yellow]⚠[/yellow] No cell lines found for {symbol}, skipping WCE data generation")
+                    console.print(f"  [yellow]⚠[/yellow] No cell lines found, skipping cell line data")
 
-                # Track sigmoidal curves processing
-                if cell_line_set:
-                    logger.info("Starting sigmoidal curves processing",
-                               symbol=symbol, cell_line_count=len(cell_line_set))
-                    console.print("  [yellow]→[/yellow] Generating sigmoidal curves...")
-
-                    wce_handler.build_cell_line_sigmoidal_curves(cell_line_set, output)
-
-                    logger.info("Sigmoidal curves generated", symbol=symbol)
-                    console.print("  [green]✓[/green] Generated sigmoidal curves")
-
-                # Track DepMap data processing (currently commented out)
-                logger.info("Starting DepMap data processing", symbol=symbol)
-                console.print("  [yellow]→[/yellow] Generating DepMap data sheet...")
-                depmap_data = depmap_handler.build_dep_map_data_sheet([uniprotkb_ac], file_path=output, cell_line_set=cell_line_set)
-                logger.info("DepMap data sheet generated", symbol=symbol, record_count=len(depmap_data))
-                console.print(f"  [green]✓[/green] Generated DepMap data sheet with {len(depmap_data)} records")
-
-                # Track external protein expression processing (currently commented out)
-                logger.info("Starting external protein expression processing", symbol=symbol)
-                console.print("  [yellow]→[/yellow] Generating external proteomics data...")
-                external_protein_handler.build_normal_proteomics_sheet(uniprotkb_ac, output)
-                logger.info("External proteomics data generated", symbol=symbol)
-                console.print("  [green]✓[/green] Generated external proteomics data sheet")
-
-                # Track gene expression processing (currently commented out)
-                # logger.info("Starting gene expression processing", symbol=symbol)
-                # console.print("  [yellow]→[/yellow] Generating gene expression data...")
-                # gene_handler.build_normal_gene_expression_sheet(uniprotkb_ac, output)
-                # gene_handler.build_gene_expression_sheet(uniprotkb_ac, output)
-                # gene_handler.build_gene_tumor_normal_ratios_sheet(uniprotkb_ac, output)
-                # logger.info("Gene expression data generated", symbol=symbol)
-                # console.print("  [green]✓[/green] Generated gene expression data sheets")
-
-                logger.info(f"Completed processing for protein {i}/{len(symbol_mappings)}",
-                           symbol=symbol, uniprotkb_ac=uniprotkb_ac)
-                console.print(f"  [bold green]✓[/bold green] Completed processing {symbol}")
+                console.print(f"  [bold green]✓[/bold green] Completed {symbol}")
 
             except Exception as e:
                 logger.exception(f"Failed to process protein {i}/{len(symbol_mappings)}",
@@ -256,20 +210,15 @@ def data(
 
         # Generate summary
         processed_count = len(symbol_mappings)
-        logger.info("Data processing completed",
-                   processed_proteins=processed_count, output_file=output)
+        console.print(f"\n[bold green]✓[/bold green] Completed processing {processed_count} proteins")
+        console.print(f"[bold green]✓[/bold green] Data saved to: {output_dir}")
 
-        console.print(f"\n[bold green]✓[/bold green] Gene expression data saved to: {output}")
-        console.print(f"[bold green]✓[/bold green] Processed {processed_count} proteins successfully")
-
-        # Show file information
-        if Path(output).exists():
-            file_size = Path(output).stat().st_size
-            console.print(f"[bold]File size: {file_size:,} bytes[/bold]")
-
-            # Log file information
-            logger.info("Output file details",
-                       file_path=output, file_size_bytes=file_size, file_size_mb=file_size/1024/1024)
+        # Show directory information
+        output_path = Path(output_dir)
+        if output_path.exists():
+            csv_files = list(output_path.glob("*.csv"))
+            total_size = sum(f.stat().st_size for f in csv_files)
+            console.print(f"[bold]Generated {len(csv_files)} CSV files ({total_size:,} bytes)[/bold]")
 
     except Exception as e:
         logger.exception("Failed to generate gene expression data", error=str(e))
@@ -279,18 +228,18 @@ def data(
 
 @app.command()
 def graph(
-    excel_file: str = typer.Argument(..., help="Path to the Excel file to analyze"),
+    data_dir: str = typer.Argument(..., help="Path to the directory containing CSV files to analyze"),
     output_dir: str = typer.Option("./graphs", help="Directory to save generated graphs"),
     data_types: list[str] = typer.Option(None, help="Specific data types to process"),
     show_analysis: bool = typer.Option(True, help="Show analysis results before generating graphs"),
 ):
     """
-    Analyze Excel file and generate graphs based on available data.
+    Analyze CSV files and generate graphs based on available data.
 
-    This command analyzes an Excel file generated by the main data fetcher
+    This command analyzes CSV files generated by the main data fetcher
     and automatically generates appropriate visualizations for each data type found.
     """
-    analyze_and_graph(excel_file, output_dir, data_types, show_analysis)
+    analyze_and_graph(data_dir, output_dir, data_types, show_analysis)
 
 
 def main():

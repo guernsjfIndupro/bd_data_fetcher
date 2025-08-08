@@ -30,8 +30,8 @@ class UMapServiceClient:
         """
         Initialize the UMap service client.
         """
-        # self.base_url = "https://indupro-apps.com/umap-service/api/v1/"
-        self.base_url = "http://localhost:8081/umap-service/api/v1/"
+        self.base_url = "https://indupro-apps.com/umap-service/api/v1/"
+        # self.base_url = "http://localhost:8081/umap-service/api/v1/"
 
         if not self.base_url:
             msg = "Base URL must set in UMAP_SERVICE_URL environment variable"

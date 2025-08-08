@@ -1,6 +1,7 @@
 """Base graph class for data visualization."""
 
 import logging
+import os
 from abc import ABC, abstractmethod
 from pathlib import Path
 
@@ -13,66 +14,73 @@ logger = logging.getLogger(__name__)
 class BaseGraph(ABC):
     """Base class for all graph generators.
 
-    This class provides common functionality for reading Excel files,
+    This class provides common functionality for reading CSV files,
     processing data, and generating visualizations.
     """
 
-    def __init__(self, excel_file_path: str):
+    def __init__(self, data_dir_path: str):
         """Initialize the graph generator.
 
         Args:
-            excel_file_path: Path to the Excel file containing data
+            data_dir_path: Path to the directory containing CSV files
         """
-        self.excel_file_path = Path(excel_file_path)
+        self.data_dir_path = Path(data_dir_path)
         self.data: dict[str, pd.DataFrame] = {}
 
-    def load_excel_data(self) -> bool:
-        """Load all sheets from the Excel file into memory.
+    def load_csv_data(self) -> bool:
+        """Load all CSV files from the data directory into memory.
 
         Returns:
             True if data was loaded successfully, False otherwise
         """
         try:
-            if not self.excel_file_path.exists():
-                logger.error(f"Excel file not found: {self.excel_file_path}")
+            if not self.data_dir_path.exists():
+                logger.error(f"Data directory not found: {self.data_dir_path}")
                 return False
 
-            # Read all sheets into a dictionary
-            excel_file = pd.ExcelFile(self.excel_file_path)
-            for sheet_name in excel_file.sheet_names:
-                self.data[sheet_name] = pd.read_excel(
-                    self.excel_file_path, sheet_name=sheet_name
-                )
-                logger.info(f"Loaded sheet '{sheet_name}' with {len(self.data[sheet_name])} rows")
+            # Read all CSV files into a dictionary
+            csv_files = list(self.data_dir_path.glob("*.csv"))
+            if not csv_files:
+                logger.error(f"No CSV files found in directory: {self.data_dir_path}")
+                return False
 
-            return True
+            for csv_file in csv_files:
+                file_name = csv_file.name
+                try:
+                    self.data[file_name] = pd.read_csv(csv_file)
+                    logger.info(f"Loaded CSV file '{file_name}' with {len(self.data[file_name])} rows")
+                except Exception as e:
+                    logger.warning(f"Error reading CSV file {file_name}: {e}")
+                    continue
+
+            return len(self.data) > 0
 
         except Exception as e:
-            logger.exception(f"Error loading Excel file: {e}")
+            logger.exception(f"Error loading CSV files: {e}")
             return False
 
-    def get_available_sheets(self) -> list[str]:
-        """Get list of available sheet names.
+    def get_available_files(self) -> list[str]:
+        """Get list of available CSV file names.
 
         Returns:
-            List of sheet names in the Excel file
+            List of CSV file names in the data directory
         """
         return list(self.data.keys())
 
-    def get_sheet_data(self, sheet_name: str) -> pd.DataFrame | None:
-        """Get data for a specific sheet.
+    def get_data_for_file(self, file_name: str) -> pd.DataFrame | None:
+        """Get data for a specific CSV file.
 
         Args:
-            sheet_name: Name of the sheet to retrieve
+            file_name: Name of the CSV file
 
         Returns:
-            DataFrame for the sheet, or None if not found
+            DataFrame for the file or None if not found
         """
-        return self.data.get(sheet_name)
+        return self.data.get(file_name)
 
     @abstractmethod
     def generate_graphs(self, output_dir: str) -> bool:
-        """Generate all relevant graphs for this data handler.
+        """Generate graphs for the loaded data.
 
         Args:
             output_dir: Directory to save generated graphs
@@ -80,38 +88,4 @@ class BaseGraph(ABC):
         Returns:
             True if graphs were generated successfully, False otherwise
         """
-
-    @abstractmethod
-    def get_supported_sheets(self) -> list[str]:
-        """Get list of sheet names that this graph class can process.
-
-        Returns:
-            List of supported sheet names
-        """
-
-    def save_graph(self, fig: plt.Figure, filename: str, output_dir: str, subfolder: str | None = None) -> bool:
-        """Save a matplotlib figure to file.
-
-        Args:
-            fig: Matplotlib figure to save
-            filename: Name of the output file
-            output_dir: Directory to save the file
-            subfolder: Optional subfolder to create within output_dir
-
-        Returns:
-            True if saved successfully, False otherwise
-        """
-        try:
-            if subfolder:
-                output_path = Path(output_dir) / subfolder / filename
-            else:
-                output_path = Path(output_dir) / filename
-
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            fig.savefig(output_path, dpi=300, bbox_inches='tight')
-            plt.close(fig)
-            logger.info(f"Saved graph: {output_path}")
-            return True
-        except Exception as e:
-            logger.exception(f"Error saving graph {filename}: {e}")
-            return False
+        pass

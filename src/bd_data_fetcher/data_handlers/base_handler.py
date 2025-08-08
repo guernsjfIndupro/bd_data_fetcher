@@ -3,6 +3,8 @@ Base handler class for common data handler patterns.
 """
 
 import logging
+import os
+from pathlib import Path
 
 import pandas as pd
 
@@ -19,84 +21,114 @@ class BaseDataHandler:
     def __init__(self):
         self.umap_client = UMapServiceClient()
 
-    def _manage_excel_sheet(
-        self, file_path: str, sheet_name: str, columns: list[str]
-    ) -> dict[str, pd.DataFrame]:
+    def _ensure_folder_exists(self, folder_path: str) -> None:
         """
-        Common Excel sheet management logic.
+        Ensure the output folder exists.
 
         Args:
-            file_path: Path to the Excel file
-            sheet_name: Name of the sheet to manage
-            columns: List of column names for the sheet
+            folder_path: Path to the folder
+        """
+        Path(folder_path).mkdir(parents=True, exist_ok=True)
+
+    def _get_csv_path(self, folder_path: str, file_name: str) -> str:
+        """
+        Get the full path for a CSV file.
+
+        Args:
+            folder_path: Path to the folder
+            file_name: Name of the CSV file
 
         Returns:
-            Dictionary of existing sheets
+            Full path to the CSV file
         """
-        # Check if file exists and what sheets it has
-        existing_sheets = {}
-        try:
-            with pd.ExcelFile(file_path) as xls:
-                for sheet in xls.sheet_names:
-                    existing_sheets[sheet] = pd.read_excel(file_path, sheet_name=sheet)
-        except FileNotFoundError:
-            # File doesn't exist, we'll create it
-            pass
+        return os.path.join(folder_path, file_name)
 
-        # Create the sheet if it doesn't exist
-        if sheet_name not in existing_sheets:
+    def _manage_csv_file(
+        self, folder_path: str, file_name: str, columns: list[str]
+    ) -> pd.DataFrame:
+        """
+        Common CSV file management logic.
+
+        Args:
+            folder_path: Path to the folder
+            file_name: Name of the CSV file
+            columns: List of column names for the CSV file
+
+        Returns:
+            Existing DataFrame if file exists, empty DataFrame otherwise
+        """
+        self._ensure_folder_exists(folder_path)
+        csv_path = self._get_csv_path(folder_path, file_name)
+
+        # Check if file exists
+        if os.path.exists(csv_path):
+            try:
+                existing_df = pd.read_csv(csv_path)
+                return existing_df
+            except Exception as e:
+                # Create new file with specified columns
+                new_df = pd.DataFrame(columns=columns)
+                new_df.to_csv(csv_path, index=False)
+                return new_df
+        else:
+            # Create new file with specified columns
             new_df = pd.DataFrame(columns=columns)
+            new_df.to_csv(csv_path, index=False)
+            return new_df
 
-            if existing_sheets:
-                # Append to existing file
-                with pd.ExcelWriter(file_path, engine="openpyxl", mode="a") as writer:
-                    new_df.to_excel(writer, sheet_name=sheet_name, index=False)
-            else:
-                # Create new file
-                with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
-                    new_df.to_excel(writer, sheet_name=sheet_name, index=False)
-
-        return existing_sheets
-
-    def _append_to_excel_sheet(
+    def _append_to_csv_file(
         self,
-        file_path: str,
-        sheet_name: str,
+        folder_path: str,
+        file_name: str,
         data_df: pd.DataFrame,
         default_columns: list[str],
     ) -> None:
         """
-        Common Excel append logic.
+        Common CSV append logic.
 
         Args:
-            file_path: Path to the Excel file
-            sheet_name: Name of the sheet to append to
+            folder_path: Path to the folder
+            file_name: Name of the CSV file
             data_df: DataFrame to append
-            default_columns: Default columns if sheet doesn't exist
+            default_columns: Default columns if file doesn't exist
         """
         if data_df.empty:
             return
 
-        # Read existing data to get the current row count
+        csv_path = self._get_csv_path(folder_path, file_name)
+
+        # Read existing data
         try:
-            existing_df = pd.read_excel(file_path, sheet_name=sheet_name)
+            existing_df = pd.read_csv(csv_path)
         except (FileNotFoundError, ValueError):
             existing_df = pd.DataFrame(columns=default_columns)
 
-        # Append new data to existing sheet
-        with pd.ExcelWriter(
-            file_path, engine="openpyxl", mode="a", if_sheet_exists="overlay"
-        ) as writer:
-            start_row = len(existing_df) + 1
-            data_df.to_excel(
-                writer,
-                sheet_name=sheet_name,
-                startrow=start_row,
-                index=False,
-                header=False,
-            )
+        # Handle empty DataFrames to avoid FutureWarning
+        if existing_df.empty and data_df.empty:
+            # Both are empty, just save the empty DataFrame with correct columns
+            pd.DataFrame(columns=default_columns).to_csv(csv_path, index=False)
+            return
+        elif existing_df.empty:
+            # Only existing is empty, just save the new data
+            data_df.to_csv(csv_path, index=False)
+            return
+        elif data_df.empty:
+            # Only new data is empty, keep existing file unchanged
+            return
+        else:
+            # Both have data, concatenate them
+            # Ensure both DataFrames have the same columns to avoid dtype issues
+            all_columns = list(set(existing_df.columns) | set(data_df.columns))
+            
+            # Reindex both DataFrames to have the same columns
+            existing_df = existing_df.reindex(columns=all_columns, fill_value=None)
+            data_df = data_df.reindex(columns=all_columns, fill_value=None)
+            
+            # Now concatenate
+            combined_df = pd.concat([existing_df, data_df], ignore_index=True)
+            combined_df.to_csv(csv_path, index=False)
 
-    def _transform_data_to_sheet_format(
+    def _transform_data_to_csv_format(
         self, data_df: pd.DataFrame, column_mapping: dict[str, str]
     ) -> pd.DataFrame:
         """
@@ -104,7 +136,7 @@ class BaseDataHandler:
 
         Args:
             data_df: Original DataFrame
-            column_mapping: Dictionary mapping sheet columns to DataFrame columns
+            column_mapping: Dictionary mapping CSV columns to DataFrame columns
 
         Returns:
             Transformed DataFrame
@@ -112,26 +144,26 @@ class BaseDataHandler:
         transformed_data = []
         for _, row in data_df.iterrows():
             transformed_row = {}
-            for sheet_col, df_col in column_mapping.items():
+            for csv_col, df_col in column_mapping.items():
                 if df_col in row:
-                    transformed_row[sheet_col] = row[df_col]
+                    transformed_row[csv_col] = row[df_col]
                 # Handle missing columns with appropriate defaults
                 elif df_col == "is_mapped":
-                    transformed_row[sheet_col] = False
+                    transformed_row[csv_col] = False
                 elif isinstance(row.get(df_col, None), bool):
-                    transformed_row[sheet_col] = False
+                    transformed_row[csv_col] = False
                 elif isinstance(row.get(df_col, None), int | float):
-                    transformed_row[sheet_col] = 0
+                    transformed_row[csv_col] = 0
                 else:
-                    transformed_row[sheet_col] = ""
+                    transformed_row[csv_col] = ""
             transformed_data.append(transformed_row)
 
         return pd.DataFrame(transformed_data)
 
-    def _create_matrix_sheet(
+    def _create_matrix_csv(
         self,
-        file_path: str,
-        sheet_name: str,
+        folder_path: str,
+        file_name: str,
         data_df: pd.DataFrame,
         group_field: str,
         value_field: str,
@@ -139,33 +171,35 @@ class BaseDataHandler:
         gene_column_name: str = "Gene",
     ) -> pd.DataFrame:
         """
-        Common matrix/pivot logic for creating matrix sheets.
+        Common matrix/pivot logic for creating matrix CSV files.
 
         Args:
-            file_path: Path to the Excel file
-            sheet_name: Name of the sheet
+            folder_path: Path to the folder
+            file_name: Name of the CSV file
             data_df: DataFrame with data
             group_field: Field to group by (e.g., 'indication', 'primary_site')
             value_field: Field containing values to average (e.g., 'log2_expression', 'expression_value')
             gene_field: Field containing gene/protein symbol
-            gene_column_name: Name for the gene column in the sheet
+            gene_column_name: Name for the gene column in the CSV
 
         Returns:
             DataFrame with matrix data
         """
-        # Always create the sheet structure, even if data is empty
+        csv_path = self._get_csv_path(folder_path, file_name)
+
+        # Always create the file structure, even if data is empty
         if data_df.empty:
-            # Create a minimal sheet with just the gene column
+            # Create a minimal file with just the gene column
             columns = [gene_column_name]
-            self._manage_excel_sheet(file_path, sheet_name, columns)
+            self._manage_csv_file(folder_path, file_name, columns)
             return data_df
 
         # Extract all unique groups from the data
         all_groups = sorted(data_df[group_field].unique())
 
-        # Manage Excel sheet
+        # Manage CSV file
         columns = [gene_column_name, *all_groups]
-        self._manage_excel_sheet(file_path, sheet_name, columns)
+        existing_df = self._manage_csv_file(folder_path, file_name, columns)
 
         # Compute the average for each group
         avg_values = data_df.groupby(group_field)[value_field].mean()
@@ -174,16 +208,13 @@ class BaseDataHandler:
         gene_symbol = data_df[gene_field].iloc[0] if not data_df.empty else ""
         row_data = {gene_column_name: gene_symbol}
 
-        # Read existing sheet to get column structure
-        try:
-            existing_df = pd.read_excel(file_path, sheet_name=sheet_name)
+        # Get all columns from existing file or current data
+        if not existing_df.empty:
             all_columns = list(existing_df.columns)
-        except (FileNotFoundError, ValueError):
-            # If sheet doesn't exist or is empty, use columns from current data
+        else:
             all_columns = [gene_column_name, *all_groups]
-            existing_df = pd.DataFrame(columns=all_columns)
 
-        # Ensure all columns from the sheet are present in the row_data, fill missing with None
+        # Ensure all columns from the file are present in the row_data, fill missing with None
         avg_dict = avg_values.to_dict()
         for col in all_columns:
             if col == gene_column_name:
@@ -192,22 +223,12 @@ class BaseDataHandler:
 
         row_data[gene_column_name] = gene_symbol
 
-        # Reorder row_data to match the columns in the sheet
+        # Reorder row_data to match the columns in the file
         ordered_row = [row_data.get(col, None) for col in all_columns]
         pivot_df = pd.DataFrame([ordered_row], columns=all_columns)
 
-        # Append to existing sheet
-        with pd.ExcelWriter(
-            file_path, engine="openpyxl", mode="a", if_sheet_exists="overlay"
-        ) as writer:
-            start_row = len(existing_df) + 1
-            pivot_df.to_excel(
-                writer,
-                sheet_name=sheet_name,
-                startrow=start_row,
-                index=False,
-                header=False,
-            )
+        # Append to existing file
+        self._append_to_csv_file(folder_path, file_name, pivot_df, all_columns)
 
         return data_df
 
