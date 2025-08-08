@@ -131,10 +131,10 @@ class InternalWCEGraph(BaseGraph):
     def _generate_sigmoidal_curves(self, output_dir: str) -> bool:
         """Generate sigmoidal curves from WCE data.
 
-        Creates line plots showing:
+        Creates separate line plots for each cell line showing:
         - X-axis: Standardized rankings (0-1000)
         - Y-axis: Log10-transformed normalized intensities
-        - One line per cell line
+        - Smooth curves with average protein ranks as points
 
         Args:
             output_dir: Directory to save the graphs
@@ -148,6 +148,12 @@ class InternalWCEGraph(BaseGraph):
             if curves_df is None or curves_df.empty:
                 logger.error("No sigmoidal curves data available")
                 return False
+
+            # Get WCE data for protein ranks
+            wce_df = self.get_data_for_file(FileNames.WCE_DATA.value)
+            if wce_df is None or wce_df.empty:
+                logger.warning("No WCE data available for protein ranks")
+                wce_df = None
 
             # Check for required columns
             required_columns = ['Cell_Line_Name', 'Is_Y_Axis']
@@ -170,55 +176,109 @@ class InternalWCEGraph(BaseGraph):
                 logger.error("No cell lines found in sigmoidal curves data")
                 return False
 
-            # Set up the plot
-            plt.figure(figsize=(12, 8))
-            sns.set_style("whitegrid")
+            logger.info(f"Generating sigmoidal curves for {len(cell_lines)} cell lines")
 
-            # Create x-axis values (0-1000)
-            x_values = np.linspace(0, 1000, len(point_columns))
+            success_count = 0
+            total_count = len(cell_lines)
 
-            # Plot curves for each cell line
-            colors = plt.cm.Set3(np.linspace(0, 1, len(cell_lines)))
-            
-            for i, cell_line in enumerate(cell_lines):
-                cell_line_data = curves_df[curves_df['Cell_Line_Name'] == cell_line]
-                
-                # Get Y-axis data (Is_Y_Axis = 1)
-                y_data = cell_line_data[cell_line_data['Is_Y_Axis'] == 1]
-                
-                if not y_data.empty:
+            # Generate one curve per cell line
+            for cell_line in cell_lines:
+                try:
+                    # Filter data for current cell line
+                    cell_line_data = curves_df[curves_df['Cell_Line_Name'] == cell_line]
+                    
+                    if cell_line_data.empty:
+                        logger.warning(f"No data found for cell line: {cell_line}")
+                        continue
+
+                    # Get Y-axis data (Is_Y_Axis = 1)
+                    y_data = cell_line_data[cell_line_data['Is_Y_Axis'] == 1]
+                    
+                    if y_data.empty:
+                        logger.warning(f"No Y-axis data found for cell line: {cell_line}")
+                        continue
+
                     # Extract point values
                     y_values = y_data[point_columns].iloc[0].values
+                    x_values = np.linspace(0, 1000, len(point_columns))
+
+                    # Set up the plot
+                    plt.figure(figsize=(12, 8))
+                    sns.set_style("whitegrid")
+
+                    # Apply smoothing to the curve using spline interpolation
+                    from scipy.interpolate import make_interp_spline
                     
-                    # Plot the curve
-                    plt.plot(
-                        x_values,
-                        y_values,
-                        color=colors[i],
-                        alpha=0.8,
-                        linewidth=2,
-                        label=cell_line
-                    )
+                    # Create smooth curve
+                    x_smooth = np.linspace(0, 1000, 1000)  # More points for smoothness
+                    spline = make_interp_spline(x_values, y_values, k=3)  # Cubic spline
+                    y_smooth = spline(x_smooth)
 
-            # Customize the plot
-            plt.title('Sigmoidal Curves - Cell Line Proteomics Data', fontsize=16, fontweight='bold', pad=25)
-            plt.xlabel('Standardized Rankings (0-1000)', fontsize=14, fontweight='bold')
-            plt.ylabel('Log10 Normalized Intensity', fontsize=14, fontweight='bold')
+                    # Plot the smooth curve
+                    plt.plot(x_smooth, y_smooth, color='#2a9bb3', linewidth=3, alpha=0.8, label='Sigmoidal Curve')
 
-            # Add legend
-            plt.legend(title='Cell Lines', loc='upper right', fontsize=8, bbox_to_anchor=(1.15, 1))
+                    # Add protein rank points if WCE data is available
+                    if wce_df is not None and 'Cell Line' in wce_df.columns and 'Gene' in wce_df.columns:
+                        # Filter WCE data for this cell line
+                        cell_line_wce = wce_df[wce_df['Cell Line'] == cell_line]
+                        
+                        if not cell_line_wce.empty:
+                            # Calculate average rank for each protein
+                            protein_ranks = cell_line_wce.groupby('Gene')['Weight Normalized Intensity Ranking'].mean()
+                            
+                            # Plot protein rank points
+                            for protein, avg_rank in protein_ranks.items():
+                                # Find corresponding Y value for this rank
+                                rank_idx = int((avg_rank / 1000) * len(y_values))
+                                rank_idx = min(rank_idx, len(y_values) - 1)  # Ensure within bounds
+                                y_point = y_values[rank_idx]
+                                
+                                plt.scatter(avg_rank, y_point, color='#e74c3c', s=50, alpha=0.7, zorder=5)
+                                
+                                # Add protein symbol label
+                                plt.annotate(
+                                    protein,
+                                    xy=(avg_rank, y_point),
+                                    xytext=(0, -10),
+                                    textcoords='offset points',
+                                    fontsize=8,
+                                    ha='center',
+                                    va='top',
+                                    color='black'
+                                )
 
-            plt.tight_layout()
+                    # Customize the plot
+                    plt.title(f'Sigmoidal Curve - {cell_line}', fontsize=16, fontweight='bold', pad=25)
+                    plt.xlabel('Standardized Rankings (0-1000)', fontsize=14, fontweight='bold')
+                    plt.ylabel('Log10 Normalized Intensity', fontsize=14, fontweight='bold')
 
-            # Save the plot
-            filename = "sigmoidal_curves.png"
-            output_path = Path(output_dir) / "internal_wce" / filename
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            plt.savefig(output_path, dpi=300, bbox_inches='tight')
-            plt.close()
+                    # Add legend
+                    plt.legend(loc='upper right', fontsize=10)
 
-            logger.info(f"Saved sigmoidal curves plot: {output_path}")
-            return True
+                    # Remove top and right borders
+                    ax = plt.gca()
+                    ax.spines['top'].set_visible(False)
+                    ax.spines['right'].set_visible(False)
+
+                    plt.tight_layout()
+
+                    # Save the plot
+                    safe_cell_line = cell_line.replace(' ', '_').replace('/', '_').replace('\\', '_')
+                    filename = f"sigmoidal_curve_{safe_cell_line}.png"
+                    output_path = Path(output_dir) / "internal_wce" / filename
+                    output_path.parent.mkdir(parents=True, exist_ok=True)
+                    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+                    plt.close()
+
+                    logger.info(f"Saved sigmoidal curve for {cell_line}: {output_path}")
+                    success_count += 1
+
+                except Exception as e:
+                    logger.exception(f"Error generating sigmoidal curve for cell line {cell_line}: {e}")
+                    continue
+
+            logger.info(f"Generated {success_count}/{total_count} sigmoidal curves successfully")
+            return success_count > 0
 
         except Exception as e:
             logger.exception(f"Error generating sigmoidal curves: {e}")
