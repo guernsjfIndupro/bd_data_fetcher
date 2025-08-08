@@ -1,4 +1,4 @@
-import logging
+import structlog
 
 import pandas as pd
 
@@ -10,7 +10,7 @@ from bd_data_fetcher.api.umap_models import (
 from bd_data_fetcher.data_handlers.base_handler import BaseDataHandler
 from bd_data_fetcher.data_handlers.utils import SheetNames
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 
@@ -80,8 +80,6 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
             gene_column_name="Gene",
         )
 
-        return data_df
-
     def get_external_proteomics_data(
         self, uniprotkb_acs: list[str], study_ids: list[int] | None = None
     ) -> list[ExternalProteinExpressionData]:
@@ -148,11 +146,23 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
                     filtered_data.append(data_point)
         
         if not filtered_data:
-            logger.warning(f"No matching data found for uniprotkb_ac: {uniprotkb_ac}")
+            logger.info(f"No external proteomics data found for uniprotkb_ac: {uniprotkb_ac} in configured studies")
             return None
         
         # Convert to DataFrame
         data_df = pd.DataFrame([obj.dict() for obj in filtered_data])
+        
+        # Log overall tissue type summary
+        if not data_df.empty:
+            overall_tissue_counts = data_df['tissue_type'].value_counts()
+            print(f"Overall tissue type counts: {overall_tissue_counts.to_dict()}")
+            
+            # Log tissue counts per study
+            print("Tissue counts per study:")
+            for study_name in data_df['study_name'].unique():
+                study_data = data_df[data_df['study_name'] == study_name]
+                tissue_counts = study_data['tissue_type'].value_counts()
+                print(f"  {study_name}: {tissue_counts.to_dict()}")
         
         # Calculate tumor-normal differences for each protein grouped by study
         results = []
@@ -164,15 +174,19 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
                 continue
                 
             # Filter data for this study
-            study_data = data_df[data_df['study_id'] == study_id]
+            study_data = data_df[data_df['study_name'] == study_name]
             
             if study_data.empty:
                 continue
             
             # Calculate average tumor and average normal values
             # TODO: Double check this logic
-            tumor_data = study_data[study_data['sample_type'].str.contains('tumor', case=False, na=False)]
-            normal_data = study_data[study_data['sample_type'].str.contains('normal', case=False, na=False)]
+            tumor_data = study_data[study_data['tissue_type'].str.contains('Tumor', case=False, na=False)]
+            normal_data = study_data[study_data['tissue_type'].str.contains('Normal', case=False, na=False)]
+            
+            # Log tissue type counts for this study
+            tissue_counts = study_data['tissue_type'].value_counts()
+            print(f"Study {study_name} tissue type counts: {tissue_counts.to_dict()}")
             
             if not tumor_data.empty and not normal_data.empty:
                 avg_tumor = tumor_data['value'].mean()
@@ -200,7 +214,7 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
                 continue
                 
             # Filter data for this study
-            study_data = data_df[data_df['study_id'] == study_id]
+            study_data = data_df[data_df['study_name'] == study_name]
             
             if study_data.empty:
                 continue
@@ -216,6 +230,7 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
                 'symbol': symbol,
                 'study_name': study_name,
                 'indication': tumor_normal_studies[study_name],
+                'sample_type': 'tumor_normal',
                 'tumor_normal_diff': avg_tumor_normal,
                 'avg_tumor': None,  # Not applicable for tumor_normal_studies
                 'avg_normal': None,  # Not applicable for tumor_normal_studies
@@ -224,7 +239,7 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
             })
         
         if not results:
-            logger.warning(f"No tumor-normal calculations possible for uniprotkb_ac: {uniprotkb_ac}")
+            logger.info(f"No external proteomics data available for tumor-normal calculations for uniprotkb_ac: {uniprotkb_ac}")
             return None
         
         # Create results DataFrame
@@ -235,7 +250,7 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
             file_path=file_path,
             sheet_name=sheet_name,
             data_df=results_df,
-            group_field="study_name",
+            group_field="indication",
             value_field="tumor_normal_diff",
             gene_field="symbol",
             gene_column_name="Gene",

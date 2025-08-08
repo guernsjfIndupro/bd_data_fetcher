@@ -1,4 +1,4 @@
-import logging
+import structlog
 from collections import defaultdict
 
 import numpy as np
@@ -9,7 +9,7 @@ from bd_data_fetcher.api.umap_models import CellLineProteomicsData
 from bd_data_fetcher.data_handlers.base_handler import BaseDataHandler
 from bd_data_fetcher.data_handlers.utils import SheetNames
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class WCEDataHandler(BaseDataHandler):

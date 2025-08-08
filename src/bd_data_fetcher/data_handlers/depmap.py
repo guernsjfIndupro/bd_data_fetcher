@@ -2,7 +2,7 @@
 DepMap data handler for processing dep-map data.
 """
 
-import logging
+import structlog
 
 import pandas as pd
 
@@ -10,7 +10,7 @@ from bd_data_fetcher.api.umap_models import DepMapData
 from bd_data_fetcher.data_handlers.base_handler import BaseDataHandler
 from bd_data_fetcher.data_handlers.utils import SheetNames
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class DepMapDataHandler(BaseDataHandler):
@@ -41,14 +41,12 @@ class DepMapDataHandler(BaseDataHandler):
 
             if missing_cell_lines:
                 from rich.console import Console
-
                 console = Console()
                 console.print(
                     f"[yellow]Warning: No DepMap data found for the following cell lines: {', '.join(sorted(missing_cell_lines))}[/yellow]"
                 )
-            return [
-                data for data in dep_map_data if data.cell_line_name in cell_line_set
-            ]
+            
+            return [data for data in dep_map_data if data.cell_line_name in cell_line_set]
         except Exception as e:
             logger.exception(f"Error retrieving DepMap data for {uniprotkb_acs}: {e}")
             return []
