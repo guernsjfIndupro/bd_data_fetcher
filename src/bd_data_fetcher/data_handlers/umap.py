@@ -1,6 +1,5 @@
-import structlog
-
 import pandas as pd
+import structlog
 
 from bd_data_fetcher.data_handlers.base_handler import BaseDataHandler
 from bd_data_fetcher.data_handlers.utils import SheetNames

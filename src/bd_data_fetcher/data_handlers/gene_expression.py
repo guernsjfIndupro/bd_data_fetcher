@@ -8,10 +8,10 @@ Retrieval of normal gene expression
 Retrieval of all gene expression data for a given study
 """
 
-import structlog
 from functools import lru_cache
 
 import pandas as pd
+import structlog
 
 from bd_data_fetcher.api.umap_models import RNAGeneExpressionData
 from bd_data_fetcher.data_handlers.base_handler import BaseDataHandler

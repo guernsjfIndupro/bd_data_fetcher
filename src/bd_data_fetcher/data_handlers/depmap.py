@@ -2,9 +2,8 @@
 DepMap data handler for processing dep-map data.
 """
 
-import structlog
-
 import pandas as pd
+import structlog
 
 from bd_data_fetcher.api.umap_models import DepMapData
 from bd_data_fetcher.data_handlers.base_handler import BaseDataHandler
@@ -45,7 +44,7 @@ class DepMapDataHandler(BaseDataHandler):
                 console.print(
                     f"[yellow]Warning: No DepMap data found for the following cell lines: {', '.join(sorted(missing_cell_lines))}[/yellow]"
                 )
-            
+
             return [data for data in dep_map_data if data.cell_line_name in cell_line_set]
         except Exception as e:
             logger.exception(f"Error retrieving DepMap data for {uniprotkb_acs}: {e}")

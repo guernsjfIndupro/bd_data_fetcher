@@ -1,11 +1,9 @@
-import structlog
-
 import pandas as pd
+import structlog
 
 from bd_data_fetcher.api.umap_models import (
     ExternalProteinExpressionData,
     ProteomicsNormalExpressionData,
-    StudyMetadata,
 )
 from bd_data_fetcher.data_handlers.base_handler import BaseDataHandler
 from bd_data_fetcher.data_handlers.utils import SheetNames
@@ -69,7 +67,7 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
         if data_df.empty:
             logger.warning(f"No normal proteomics data found for {uniprotkb_ac}")
             return None
-        
+
         return self._create_matrix_sheet(
             file_path=file_path,
             sheet_name=sheet_name,
@@ -102,33 +100,33 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
         with values being tumor-normal ratios (tumor - normal) for each study-indication.
         """
         sheet_name = SheetNames.STUDY_SPECIFIC_DATA.value
-        
+
         # Get study metadata to map study names to study IDs
         try:
             study_metadata_response = self.umap_client._get_study_metadata()
         except Exception as e:
             logger.exception(f"Error in API call for study metadata: {e}")
             return None
-        
+
         # Create mapping from study names to study IDs for regular studies and tumor_normal_studies
         study_name_to_id = {}
         for study in study_metadata_response.data:
             if study.study_name in regular_studies or study.study_name in tumor_normal_studies:
                 study_name_to_id[study.study_name] = study.id
-        
+
         # Get study IDs for the studies we want to include
         study_ids = list(study_name_to_id.values())
-        
+
         if not study_ids:
             logger.warning("No matching studies found in study metadata")
             return None
-        
+
         # Get external proteomics data for the specified studies
         external_data = self.get_external_proteomics_data(
-            uniprotkb_acs=[uniprotkb_ac], 
+            uniprotkb_acs=[uniprotkb_ac],
             study_ids=study_ids
         )
-        
+
         # Filter data to only include studies and indications from regular_studies and tumor_normal_studies
         filtered_data = []
         for data_point in external_data:
@@ -144,58 +142,54 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
                 expected_indication = tumor_normal_studies[data_point.study_name]
                 if data_point.indication.strip() == expected_indication.strip():
                     filtered_data.append(data_point)
-        
+
         if not filtered_data:
             logger.info(f"No external proteomics data found for uniprotkb_ac: {uniprotkb_ac} in configured studies")
             return None
-        
+
         # Convert to DataFrame
         data_df = pd.DataFrame([obj.dict() for obj in filtered_data])
-        
+
         # Log overall tissue type summary
         if not data_df.empty:
-            overall_tissue_counts = data_df['tissue_type'].value_counts()
-            print(f"Overall tissue type counts: {overall_tissue_counts.to_dict()}")
-            
+            data_df['tissue_type'].value_counts()
+
             # Log tissue counts per study
-            print("Tissue counts per study:")
             for study_name in data_df['study_name'].unique():
                 study_data = data_df[data_df['study_name'] == study_name]
-                tissue_counts = study_data['tissue_type'].value_counts()
-                print(f"  {study_name}: {tissue_counts.to_dict()}")
-        
+                study_data['tissue_type'].value_counts()
+
         # Calculate tumor-normal differences for each protein grouped by study
         results = []
-        
+
         # Process regular studies (calculate tumor-normal differences)
         for study_name in regular_studies.keys():
             study_id = study_name_to_id.get(study_name)
             if not study_id:
                 continue
-                
+
             # Filter data for this study
             study_data = data_df[data_df['study_name'] == study_name]
-            
+
             if study_data.empty:
                 continue
-            
+
             # Calculate average tumor and average normal values
             # TODO: Double check this logic
             tumor_data = study_data[study_data['tissue_type'].str.contains('Tumor', case=False, na=False)]
             normal_data = study_data[study_data['tissue_type'].str.contains('Normal', case=False, na=False)]
-            
+
             # Log tissue type counts for this study
-            tissue_counts = study_data['tissue_type'].value_counts()
-            print(f"Study {study_name} tissue type counts: {tissue_counts.to_dict()}")
-            
+            study_data['tissue_type'].value_counts()
+
             if not tumor_data.empty and not normal_data.empty:
                 avg_tumor = tumor_data['value'].mean()
                 avg_normal = normal_data['value'].mean()
                 tumor_normal_diff = avg_tumor - avg_normal
-                
+
                 # Get the symbol (should be the same for all rows in this study)
                 symbol = study_data['symbol'].iloc[0]
-                
+
                 results.append({
                     'symbol': symbol,
                     'study_name': study_name,
@@ -206,26 +200,26 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
                     'num_tumor_samples': len(tumor_data),
                     'num_normal_samples': len(normal_data)
                 })
-        
+
         # Process tumor_normal_studies (already in tumor-normal format, just average them)
         for study_name in tumor_normal_studies.keys():
             study_id = study_name_to_id.get(study_name)
             if not study_id:
                 continue
-                
+
             # Filter data for this study
             study_data = data_df[data_df['study_name'] == study_name]
-            
+
             if study_data.empty:
                 continue
-            
+
             # For tumor_normal_studies, the data is already in tumor-normal format
             # Just calculate the average of all values
             avg_tumor_normal = study_data['value'].mean()
-            
+
             # Get the symbol (should be the same for all rows in this study)
             symbol = study_data['symbol'].iloc[0]
-            
+
             results.append({
                 'symbol': symbol,
                 'study_name': study_name,
@@ -237,14 +231,14 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
                 'num_tumor_samples': len(study_data),  # Total samples
                 'num_normal_samples': 0  # Not applicable for tumor_normal_studies
             })
-        
+
         if not results:
             logger.info(f"No external proteomics data available for tumor-normal calculations for uniprotkb_ac: {uniprotkb_ac}")
             return None
-        
+
         # Create results DataFrame
         results_df = pd.DataFrame(results)
-        
+
         # Use the matrix sheet creation method
         return self._create_matrix_sheet(
             file_path=file_path,

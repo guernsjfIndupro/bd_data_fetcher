@@ -164,7 +164,7 @@ class DepMapGraph(BaseGraph):
                     # Get unique onc lineages for color mapping
                     onc_lineages = merged_df['Onc Lineage'].unique()
                     colors = plt.cm.Set3(np.linspace(0, 1, len(onc_lineages)))
-                    color_map = dict(zip(onc_lineages, colors))
+                    color_map = dict(zip(onc_lineages, colors, strict=False))
 
                     # Create scatter plot colored by onc lineage
                     for lineage in onc_lineages:
@@ -237,4 +237,4 @@ class DepMapGraph(BaseGraph):
         except Exception as e:
             logger.exception(f"Error generating copy number scatter plots: {e}")
             return False
-        
+

@@ -16,7 +16,6 @@ from bd_data_fetcher.api.umap_models import (
     ReciprocalMicroMapData,
     ReplicateSet,
     RNAGeneExpressionData,
-    StudyMetadata,
     StudyMetadataResponse,
     TissueSampleDiaIntensity,
 )
@@ -463,6 +462,6 @@ class UMapServiceClient:
             "page_request": page_request,
             "page_size": page_size,
         }
-        
+
         response_data = self._get(endpoint=endpoint, params=params)
         return StudyMetadataResponse(**response_data)

@@ -1,8 +1,8 @@
-import structlog
 from collections import defaultdict
 
 import numpy as np
 import pandas as pd
+import structlog
 from scipy.interpolate import interp1d, splev, splrep
 
 from bd_data_fetcher.api.umap_models import CellLineProteomicsData

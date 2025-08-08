@@ -95,10 +95,10 @@ class UMapGraph(BaseGraph):
 
                         # Get unique replicate set IDs
             unique_replicate_sets = df['Replicate Set ID'].unique()
-            
+
             # Get all target proteins from all UMap data (not just current replicate set)
             all_target_proteins = df['Target Protein'].unique()
-            
+
             logger.info(f"Creating volcano plots for {len(unique_replicate_sets)} replicate sets")
             logger.info(f"Found {len(all_target_proteins)} unique target proteins across all replicate sets")
 
@@ -110,11 +110,11 @@ class UMapGraph(BaseGraph):
             for replicate_set_id in unique_replicate_sets:
                 # Filter data for this replicate set
                 plot_data = df[df['Replicate Set ID'] == replicate_set_id]
-                
+
                 if plot_data.empty:
                     logger.warning(f"No data found for replicate set ID: {replicate_set_id}")
                     continue
-                
+
                 # Get metadata for this replicate set (should be consistent within a replicate set)
                 cell_line = plot_data['Cell Line'].iloc[0]
                 chemistry = plot_data['Chemistry'].iloc[0]

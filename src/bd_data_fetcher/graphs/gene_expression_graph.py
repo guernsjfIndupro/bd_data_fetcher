@@ -196,7 +196,7 @@ class GeneExpressionGraph(BaseGraph):
 
             # Ensure numeric columns are properly formatted
             df['Expression Value'] = pd.to_numeric(df['Expression Value'], errors='coerce')
-            
+
             # Remove rows with NaN values
             df = df.dropna(subset=['Expression Value', 'Primary Site', 'Is Cancer'])
             if df.empty:
@@ -214,7 +214,7 @@ class GeneExpressionGraph(BaseGraph):
             for gene in unique_genes:
                 # Filter data for current gene
                 gene_data = df[df['Gene'] == gene]
-                
+
                 if gene_data.empty:
                     logger.warning(f"No data found for gene: {gene}")
                     continue
@@ -225,22 +225,22 @@ class GeneExpressionGraph(BaseGraph):
 
                 # Sort primary sites alphabetically
                 primary_sites = sorted(gene_data['Primary Site'].unique())
-                
+
                 # Create the plot
                 plt.figure(figsize=(16, 10))
-                
+
                 # Prepare data for plotting with grouped layout
                 plot_data = []
                 site_labels = []
-                
+
                 for site in primary_sites:
                     site_data = gene_data[gene_data['Primary Site'] == site]
-                    
+
                     # Get tumor data (Is Cancer = True)
-                    tumor_data = site_data[site_data['Is Cancer'] == True]['Expression Value']
+                    tumor_data = site_data[site_data['Is Cancer'] is True]['Expression Value']
                     # Get normal data (Is Cancer = False)
-                    normal_data = site_data[site_data['Is Cancer'] == False]['Expression Value']
-                    
+                    normal_data = site_data[site_data['Is Cancer'] is False]['Expression Value']
+
                     # Only add this site if it has data
                     if not tumor_data.empty or not normal_data.empty:
                         # Add tumor data first (left box)
@@ -248,13 +248,13 @@ class GeneExpressionGraph(BaseGraph):
                             plot_data.append(tumor_data)
                         else:
                             plot_data.append([])  # Empty list for no data
-                        
+
                         # Add normal data second (right box)
                         if not normal_data.empty:
                             plot_data.append(normal_data)
                         else:
                             plot_data.append([])  # Empty list for no data
-                        
+
                         site_labels.append(site)
 
                 if not plot_data:
@@ -266,12 +266,12 @@ class GeneExpressionGraph(BaseGraph):
                 positions = []
                 for i in range(len(site_labels)):
                     positions.extend([i - 0.2, i + 0.2])  # Left and right positions for each site
-                
+
                 bp = plt.boxplot(plot_data, patch_artist=True, positions=positions)
-                
+
                 # Set x-axis labels to show only primary site names
                 plt.xticks(range(len(site_labels)), site_labels)
-                
+
                 # Color the boxes: Tumor = blue (even indices), Normal = red (odd indices)
                 colors = []
                 for i in range(len(bp['boxes'])):
@@ -279,9 +279,9 @@ class GeneExpressionGraph(BaseGraph):
                         colors.append('#45cfe0')  # Blue for tumor
                     else:  # Odd indices (1, 3, 5...) are normal (right boxes)
                         colors.append('#ff6b6b')  # Red for normal
-                
+
                 # Apply colors to boxes
-                for patch, color in zip(bp['boxes'], colors):
+                for patch, color in zip(bp['boxes'], colors, strict=False):
                     patch.set_facecolor(color)
                     patch.set_alpha(0.7)
 
@@ -294,14 +294,14 @@ class GeneExpressionGraph(BaseGraph):
                 )
                 plt.xlabel('Primary Site', fontsize=14, fontweight='bold')
                 plt.ylabel('Expression Value', fontsize=14, fontweight='bold')
-                
+
                 # Rotate x-axis labels for better readability
                 plt.xticks(rotation=45, ha='right', fontsize=10)
                 plt.yticks(fontsize=12)
-                
+
                 # Add grid
                 plt.grid(True, alpha=0.3)
-                
+
                 # Add legend
                 from matplotlib.patches import Patch
                 legend_elements = [
@@ -309,34 +309,34 @@ class GeneExpressionGraph(BaseGraph):
                     Patch(facecolor='#ff6b6b', alpha=0.7, label='Normal')
                 ]
                 plt.legend(handles=legend_elements, loc='upper right', fontsize=12)
-                
+
                 # Add statistics text
                 total_samples = len(gene_data)
-                tumor_samples = len(gene_data[gene_data['Is Cancer'] == True])
-                normal_samples = len(gene_data[gene_data['Is Cancer'] == False])
-                
+                tumor_samples = len(gene_data[gene_data['Is Cancer'] is True])
+                normal_samples = len(gene_data[gene_data['Is Cancer'] is False])
+
                 plt.figtext(
                     0.02, 0.02,
                     f'Total samples: {total_samples}\nTumor samples: {tumor_samples}\nNormal samples: {normal_samples}',
                     fontsize=10,
-                    bbox=dict(
-                        boxstyle='round,pad=0.5',
-                        facecolor='white',
-                        edgecolor='#45cfe0',
-                        alpha=0.8
-                    )
+                    bbox={
+                        "boxstyle": 'round,pad=0.5',
+                        "facecolor": 'white',
+                        "edgecolor": '#45cfe0',
+                        "alpha": 0.8
+                    }
                 )
-                
+
                 plt.tight_layout()
-                
+
                 # Save the plot
                 safe_gene = gene.replace(' ', '_').replace('/', '_')
                 filename = f"tumor_normal_boxplot_{safe_gene}.png"
-                
+
                 if not self.save_graph(plt.gcf(), filename, output_dir, "gene_expression"):
                     logger.error(f"Failed to save tumor-normal boxplot for gene: {gene}")
                     return False
-                
+
                 plt.close()
                 logger.info(f"Generated tumor-normal boxplot for gene: {gene}")
 

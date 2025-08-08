@@ -76,7 +76,7 @@ def display_data_handlers_overview():
         "normal_gene_expression, gene_expression, gene_tumor_normal_ratios"
     )
     handlers_table.add_row(
-        "uMapDataHandler", 
+        "uMapDataHandler",
         "Retrieves and prepares uMap data",
         "umap_data, cell_line_targeting"
     )
@@ -131,7 +131,7 @@ def data(
         console.print(
             f"\nMapping {len(symbols)} protein symbols to UniProtKB accession numbers..."
         )
-        
+
         # Add timeout and error handling for the API call
         try:
             symbol_mappings = umap_client.map_protein(symbols)
@@ -165,7 +165,7 @@ def data(
 
         # Initialize data handlers with logging
         logger.info("Initializing data handlers", handlers=["GeneExpression", "UMap", "WCE", "DepMap", "ExternalProtein"])
-        gene_handler = GeneExpressionDataHandler()
+        GeneExpressionDataHandler()
         umap_handler = uMapDataHandler()
         wce_handler = WCEDataHandler()
         depmap_handler = DepMapDataHandler()
@@ -178,7 +178,7 @@ def data(
         )
 
         for i, (symbol, uniprotkb_ac) in enumerate(symbol_mappings.items(), 1):
-            logger.info(f"Starting processing for protein {i}/{len(symbol_mappings)}", 
+            logger.info(f"Starting processing for protein {i}/{len(symbol_mappings)}",
                        symbol=symbol, uniprotkb_ac=uniprotkb_ac)
             console.print(f"\n[bold cyan]Processing {symbol} ({uniprotkb_ac})...[/bold cyan]")
 
@@ -186,22 +186,22 @@ def data(
                 # Track UMap data processing
                 logger.info("Starting UMap data processing", symbol=symbol)
                 console.print("  [yellow]→[/yellow] Retrieving UMap cell line data...")
-                
+
                 cell_line_set = umap_handler.get_cell_lines(uniprotkb_ac)
-                
-                logger.info("UMap cell lines retrieved", 
+
+                logger.info("UMap cell lines retrieved",
                            symbol=symbol, cell_line_count=len(cell_line_set))
                 console.print(f"  [green]✓[/green] Found {len(cell_line_set)} cell lines for {symbol}")
 
                 # Track WCE data processing
                 if cell_line_set:
-                    logger.info("Starting WCE data processing", 
+                    logger.info("Starting WCE data processing",
                                symbol=symbol, cell_line_count=len(cell_line_set))
                     console.print("  [yellow]→[/yellow] Generating WCE data sheet...")
-                    
+
                     wce_data = wce_handler.build_wce_data_sheet(uniprotkb_ac, cell_line_set, output)
-                    
-                    logger.info("WCE data sheet generated", 
+
+                    logger.info("WCE data sheet generated",
                                symbol=symbol, record_count=len(wce_data))
                     console.print(f"  [green]✓[/green] Generated WCE data sheet with {len(wce_data)} records")
                 else:
@@ -210,12 +210,12 @@ def data(
 
                 # Track sigmoidal curves processing
                 if cell_line_set:
-                    logger.info("Starting sigmoidal curves processing", 
+                    logger.info("Starting sigmoidal curves processing",
                                symbol=symbol, cell_line_count=len(cell_line_set))
                     console.print("  [yellow]→[/yellow] Generating sigmoidal curves...")
-                    
+
                     wce_handler.build_cell_line_sigmoidal_curves(cell_line_set, output)
-                    
+
                     logger.info("Sigmoidal curves generated", symbol=symbol)
                     console.print("  [green]✓[/green] Generated sigmoidal curves")
 
@@ -242,12 +242,12 @@ def data(
                 # logger.info("Gene expression data generated", symbol=symbol)
                 # console.print("  [green]✓[/green] Generated gene expression data sheets")
 
-                logger.info(f"Completed processing for protein {i}/{len(symbol_mappings)}", 
+                logger.info(f"Completed processing for protein {i}/{len(symbol_mappings)}",
                            symbol=symbol, uniprotkb_ac=uniprotkb_ac)
                 console.print(f"  [bold green]✓[/bold green] Completed processing {symbol}")
 
             except Exception as e:
-                logger.exception(f"Failed to process protein {i}/{len(symbol_mappings)}", 
+                logger.exception(f"Failed to process protein {i}/{len(symbol_mappings)}",
                                symbol=symbol, uniprotkb_ac=uniprotkb_ac, error=str(e))
                 console.print(
                     f"  [bold red]✗[/bold red] Failed to process {symbol}: {e!s}", style="red"
@@ -256,9 +256,9 @@ def data(
 
         # Generate summary
         processed_count = len(symbol_mappings)
-        logger.info("Data processing completed", 
+        logger.info("Data processing completed",
                    processed_proteins=processed_count, output_file=output)
-        
+
         console.print(f"\n[bold green]✓[/bold green] Gene expression data saved to: {output}")
         console.print(f"[bold green]✓[/bold green] Processed {processed_count} proteins successfully")
 
@@ -266,9 +266,9 @@ def data(
         if Path(output).exists():
             file_size = Path(output).stat().st_size
             console.print(f"[bold]File size: {file_size:,} bytes[/bold]")
-            
+
             # Log file information
-            logger.info("Output file details", 
+            logger.info("Output file details",
                        file_path=output, file_size_bytes=file_size, file_size_mb=file_size/1024/1024)
 
     except Exception as e:
