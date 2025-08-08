@@ -19,6 +19,7 @@ class InternalWCEGraph(BaseGraph):
 
     This class handles visualization of WCE proteomics data,
     including cell line measurements and sigmoidal curves.
+    Uses an anchor protein as a reference point for visualizations.
     """
 
     def generate_graphs(self, output_dir: str) -> bool:

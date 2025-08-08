@@ -28,13 +28,15 @@ class CSVGraphAnalyzer:
     and generates appropriate visualizations for each data type.
     """
 
-    def __init__(self, data_dir_path: str):
+    def __init__(self, data_dir_path: str, anchor_protein: str):
         """Initialize the CSV graph analyzer.
 
         Args:
             data_dir_path: Path to the directory containing CSV files to analyze
+            anchor_protein: Anchor protein symbol to use for graph generation
         """
         self.data_dir_path = Path(data_dir_path)
+        self.anchor_protein = anchor_protein
         self.graph_generators: dict[str, object] = {
             FileNames.DEPMAP_DATA.value: DepMapGraph,
             FileNames.NORMAL_PROTEOMICS_DATA.value: ExternalProteinExpressionGraph,
@@ -82,27 +84,7 @@ class CSVGraphAnalyzer:
             console.print(f"[red]Error analyzing CSV directory: {e}[/red]")
             return {}
 
-    def display_analysis_results(self, data_type_mapping: dict[str, list[str]]) -> None:
-        """Display analysis results in a formatted table.
 
-        Args:
-            data_type_mapping: Dictionary mapping data types to file names
-        """
-        if not data_type_mapping:
-            console.print("[yellow]No supported data types found[/yellow]")
-            return
-
-        table = Table(title="CSV Directory Analysis Results")
-        table.add_column("Data Type", style="cyan")
-        table.add_column("Files Found", style="green")
-        table.add_column("Graph Generator", style="yellow")
-
-        for data_type, files in data_type_mapping.items():
-            graph_class = self.graph_generators.get(data_type, "Unknown")
-            graph_name = graph_class.__name__ if hasattr(graph_class, '__name__') else str(graph_class)
-            table.add_row(data_type, ", ".join(files), graph_name)
-
-        console.print(table)
 
     def generate_all_graphs(self, output_dir: str, data_type_mapping: dict[str, list[str]]) -> bool:
         """Generate graphs for all detected data types.
@@ -127,17 +109,11 @@ class CSVGraphAnalyzer:
         total_count = len(data_type_mapping)
 
         for data_type in data_type_mapping.keys():
-            # Only process DepMap copy number scatter plot; skip others
-            allowed_graph_types = {"depmap_data.csv"}
-            if data_type not in allowed_graph_types:
-                console.print(f"[yellow]Skipping unsupported graph type: {data_type}[/yellow]")
-                continue
-
             console.print(f"\n[cyan]Processing {data_type}...[/cyan]")
 
             try:
                 graph_class = self.graph_generators[data_type]
-                graph_instance = graph_class(str(self.data_dir_path))
+                graph_instance = graph_class(str(self.data_dir_path), self.anchor_protein)
 
                 if graph_instance.generate_graphs(str(output_path)):
                     console.print(f"[green]✓ Successfully generated graphs for {data_type}[/green]")
@@ -151,60 +127,13 @@ class CSVGraphAnalyzer:
         console.print(f"\n[bold]Summary: {success_count}/{total_count} data types processed successfully[/bold]")
         return success_count == total_count
 
-    def generate_specific_graphs(self, data_types: list[str], output_dir: str) -> bool:
-        """Generate graphs for specific data types.
 
-        Args:
-            data_types: List of data types to process
-            output_dir: Directory to save generated graphs
-
-        Returns:
-            True if all specified graphs were generated successfully, False otherwise
-        """
-        output_path = Path(output_dir)
-        output_path.mkdir(parents=True, exist_ok=True)
-
-        console.print(f"[green]Generating specific graphs in: {output_path}[/green]")
-
-        success_count = 0
-        total_count = len(data_types)
-
-        for data_type in data_types:
-            if data_type not in self.graph_generators:
-                console.print(f"[red]✗ Unsupported data type: {data_type}[/red]")
-                continue
-
-            # Only process DepMap copy number scatter plot; skip others
-            allowed_graph_types = {"depmap_data.csv"}
-            if data_type not in allowed_graph_types:
-                console.print(f"[yellow]Skipping unsupported graph type: {data_type}[/yellow]")
-                continue
-
-            console.print(f"\n[cyan]Processing {data_type}...[/cyan]")
-
-            try:
-
-                graph_class = self.graph_generators[data_type]
-                graph_instance = graph_class(str(self.data_dir_path))
-
-                if graph_instance.generate_graphs(str(output_path)):
-                    console.print(f"[green]✓ Successfully generated graphs for {data_type}[/green]")
-                    success_count += 1
-                else:
-                    console.print(f"[red]✗ Failed to generate graphs for {data_type}[/red]")
-
-            except Exception as e:
-                console.print(f"[red]✗ Error processing {data_type}: {e}[/red]")
-
-        console.print(f"\n[bold]Summary: {success_count}/{total_count} data types processed successfully[/bold]")
-        return success_count == total_count
 
 
 def analyze_and_graph(
     data_dir: str = typer.Argument(..., help="Path to the directory containing CSV files to analyze"),
+    anchor_protein: str = typer.Argument(..., help="Anchor protein symbol (e.g., EGFR, TP53)"),
     output_dir: str = typer.Option("./graphs", help="Directory to save generated graphs"),
-    data_types: list[str] | None = typer.Option(None, help="Specific data types to process"),
-    show_analysis: bool = typer.Option(True, help="Show analysis results before generating graphs"),
 ) -> None:
     """Analyze CSV files and generate graphs based on available data.
 
@@ -213,7 +142,7 @@ def analyze_and_graph(
     """
     try:
         # Initialize analyzer
-        analyzer = CSVGraphAnalyzer(data_dir)
+        analyzer = CSVGraphAnalyzer(data_dir, anchor_protein)
 
         # Analyze the CSV directory
         data_type_mapping = analyzer.analyze_csv_directory()
@@ -222,17 +151,8 @@ def analyze_and_graph(
             console.print("[red]No supported data types found. Exiting.[/red]")
             raise typer.Exit(1)
 
-        # Display analysis results
-        if show_analysis:
-            analyzer.display_analysis_results(data_type_mapping)
-
-        # Generate graphs
-        if data_types:
-            # Generate graphs for specific data types
-            success = analyzer.generate_specific_graphs(data_types, output_dir)
-        else:
-            # Generate graphs for all detected data types
-            success = analyzer.generate_all_graphs(output_dir, data_type_mapping)
+        # Generate all graphs
+        success = analyzer.generate_all_graphs(output_dir, data_type_mapping)
 
         if success:
             console.print(f"\n[bold green]✓ All graphs generated successfully in: {output_dir}[/bold green]")

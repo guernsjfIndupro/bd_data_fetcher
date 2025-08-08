@@ -19,6 +19,7 @@ class UMapGraph(BaseGraph):
 
     This class handles visualization of UMap analysis results,
     including log2 fold changes, p-values, and cell line targeting data.
+    Uses an anchor protein as a reference point for visualizations.
     """
 
     def generate_graphs(self, output_dir: str) -> bool:

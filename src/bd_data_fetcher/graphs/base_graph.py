@@ -18,13 +18,15 @@ class BaseGraph(ABC):
     processing data, and generating visualizations.
     """
 
-    def __init__(self, data_dir_path: str):
+    def __init__(self, data_dir_path: str, anchor_protein: str):
         """Initialize the graph generator.
 
         Args:
             data_dir_path: Path to the directory containing CSV files
+            anchor_protein: Anchor protein symbol to use for graph generation
         """
         self.data_dir_path = Path(data_dir_path)
+        self.anchor_protein = anchor_protein
         self.data: dict[str, pd.DataFrame] = {}
 
     def load_csv_data(self) -> bool:

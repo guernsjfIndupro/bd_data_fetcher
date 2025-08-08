@@ -19,6 +19,7 @@ class GeneExpressionGraph(BaseGraph):
 
     This class handles visualization of gene expression data,
     including normal expression, tumor-normal ratios, and expression distributions.
+    Uses an anchor protein as a reference point for visualizations.
     """
 
     def generate_graphs(self, output_dir: str) -> bool:

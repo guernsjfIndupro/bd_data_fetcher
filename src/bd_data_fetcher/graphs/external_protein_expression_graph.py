@@ -19,6 +19,7 @@ class ExternalProteinExpressionGraph(BaseGraph):
 
     This class handles visualization of external proteomics data,
     including normal expression data and study-specific comparisons.
+    Uses an anchor protein as a reference point for visualizations.
     """
 
     def generate_graphs(self, output_dir: str) -> bool:

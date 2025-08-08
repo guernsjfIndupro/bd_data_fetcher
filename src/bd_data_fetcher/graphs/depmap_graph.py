@@ -19,6 +19,7 @@ class DepMapGraph(BaseGraph):
 
     This class handles visualization of DepMap dependency data,
     including gene dependency scores and cell line information.
+    Uses an anchor protein as a reference point for visualizations.
     """
 
     def generate_graphs(self, output_dir: str) -> bool:
