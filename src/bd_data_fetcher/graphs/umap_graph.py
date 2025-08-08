@@ -133,6 +133,11 @@ class UMapGraph(BaseGraph):
             # Add legend
             plt.legend(title='Significance', loc='upper right', fontsize=10)
 
+            # Remove top and right borders
+            ax = plt.gca()
+            ax.spines['top'].set_visible(False)
+            ax.spines['right'].set_visible(False)
+
             plt.tight_layout()
 
             # Save the plot
