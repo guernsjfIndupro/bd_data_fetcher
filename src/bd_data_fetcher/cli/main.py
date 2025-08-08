@@ -190,13 +190,16 @@ def data(
             f"\n[bold]Generating data for {len(symbol_mappings)} proteins...[/bold]"
         )
 
+        # Generate cell line sigmoidal curves
+        console.print(f"\n[bold]Generating cell line sigmoidal curves...[/bold]")
+        wce_handler.build_cell_line_sigmoidal_curves_csv(all_cell_lines, output_dir)
+
         for i, (symbol, uniprotkb_ac) in enumerate(symbol_mappings.items(), 1):
             console.print(f"\n[bold cyan]Processing {symbol} ({uniprotkb_ac})...[/bold cyan]")
 
             try:
                 # Generate all data types using the combined cell line set
                 wce_data = wce_handler.build_wce_data_csv(uniprotkb_ac, all_cell_lines, output_dir)
-                wce_handler.build_cell_line_sigmoidal_curves_csv(all_cell_lines, output_dir)
                 depmap_data = depmap_handler.build_dep_map_data_csv([uniprotkb_ac], folder_path=output_dir, cell_line_set=all_cell_lines)
                 external_protein_handler.build_normal_proteomics_csv(uniprotkb_ac, output_dir)
                 external_protein_handler.build_protein_expression_csv(uniprotkb_ac, output_dir)
