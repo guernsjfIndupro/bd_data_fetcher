@@ -172,7 +172,7 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
             if study_data.empty:
                 continue
 
-            # Calculate average tumor and average normal values
+            # Calculate median tumor and median normal values
             tumor_data = study_data[study_data['tissue_type'].str.contains('Tumor', case=False, na=False)]
             normal_data = study_data[study_data['tissue_type'].str.contains('Normal', case=False, na=False)]
 
@@ -180,9 +180,9 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
             study_data['tissue_type'].value_counts()
 
             if not tumor_data.empty and not normal_data.empty:
-                avg_tumor = tumor_data['value'].mean()
-                avg_normal = normal_data['value'].mean()
-                tumor_normal_diff = avg_tumor - avg_normal
+                median_tumor = tumor_data['value'].median()
+                median_normal = normal_data['value'].median()
+                tumor_normal_diff = median_tumor - median_normal
 
                 # Get the symbol (should be the same for all rows in this study)
                 symbol = study_data['symbol'].iloc[0]
@@ -192,13 +192,13 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
                     'study_name': study_name,
                     'indication': regular_studies[study_name],
                     'tumor_normal_diff': tumor_normal_diff,
-                    'avg_tumor': avg_tumor,
-                    'avg_normal': avg_normal,
+                    'median_tumor': median_tumor,
+                    'median_normal': median_normal,
                     'num_tumor_samples': len(tumor_data),
                     'num_normal_samples': len(normal_data)
                 })
 
-        # Process tumor_normal_studies (already in tumor-normal format, just average them)
+        # Process tumor_normal_studies (already in tumor-normal format, just calculate median)
         for study_name in tumor_normal_studies.keys():
             study_id = study_name_to_id.get(study_name)
             if not study_id:
@@ -211,8 +211,8 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
                 continue
 
             # For tumor_normal_studies, the data is already in tumor-normal format
-            # Just calculate the average of all values
-            avg_tumor_normal = study_data['value'].mean()
+            # Just calculate the median of all values
+            median_tumor_normal = study_data['value'].median()
 
             # Get the symbol (should be the same for all rows in this study)
             symbol = study_data['symbol'].iloc[0]
@@ -222,9 +222,9 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
                 'study_name': study_name,
                 'indication': tumor_normal_studies[study_name],
                 'sample_type': 'tumor_normal',
-                'tumor_normal_diff': avg_tumor_normal,
-                'avg_tumor': None,  # Not applicable for tumor_normal_studies
-                'avg_normal': None,  # Not applicable for tumor_normal_studies
+                'tumor_normal_diff': median_tumor_normal,
+                'median_tumor': None,  # Not applicable for tumor_normal_studies
+                'median_normal': None,  # Not applicable for tumor_normal_studies
                 'num_tumor_samples': len(study_data),  # Total samples
                 'num_normal_samples': 0  # Not applicable for tumor_normal_studies
             })

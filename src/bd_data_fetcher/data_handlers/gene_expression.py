@@ -170,9 +170,9 @@ class GeneExpressionDataHandler(BaseDataHandler):
             normal_data = site_data[site_data['is_cancer'] == False]
 
             if not tumor_data.empty and not normal_data.empty:
-                avg_tumor = tumor_data['expression_value'].mean()
-                avg_normal = normal_data['expression_value'].mean()
-                tumor_normal_ratio = avg_tumor - avg_normal
+                median_tumor = tumor_data['expression_value'].median()
+                median_normal = normal_data['expression_value'].median()
+                tumor_normal_ratio = median_tumor - median_normal
 
                 # Get the symbol (should be the same for all rows in this primary site)
                 symbol = site_data['symbol'].iloc[0]
@@ -181,8 +181,8 @@ class GeneExpressionDataHandler(BaseDataHandler):
                     'symbol': symbol,
                     'primary_site': primary_site,
                     'tumor_normal_ratio': tumor_normal_ratio,
-                    'avg_tumor': avg_tumor,
-                    'avg_normal': avg_normal,
+                    'median_tumor': median_tumor,
+                    'median_normal': median_normal,
                     'num_tumor_samples': len(tumor_data),
                     'num_normal_samples': len(normal_data)
                 })
