@@ -90,7 +90,7 @@ def display_data_handlers_overview() -> None:
         (
             "ExternalProteinExpressionDataHandler",
             "Manages external proteomics data from various cancer studies",
-            "normal_proteomics_data.csv, study_specific_data.csv"
+            "normal_proteomics_data.csv, study_specific_data.csv, protein_expression.csv"
         ),
     ]
 
@@ -199,6 +199,7 @@ def data(
                 wce_handler.build_cell_line_sigmoidal_curves_csv(all_cell_lines, output_dir)
                 depmap_data = depmap_handler.build_dep_map_data_csv([uniprotkb_ac], folder_path=output_dir, cell_line_set=all_cell_lines)
                 external_protein_handler.build_normal_proteomics_csv(uniprotkb_ac, output_dir)
+                external_protein_handler.build_protein_expression_csv(uniprotkb_ac, output_dir)
                 external_protein_handler.build_study_specific_csv(uniprotkb_ac, output_dir)
                 gene_handler.build_normal_gene_expression_csv(uniprotkb_ac, output_dir)
                 gene_handler.build_gene_expression_csv(uniprotkb_ac, output_dir)

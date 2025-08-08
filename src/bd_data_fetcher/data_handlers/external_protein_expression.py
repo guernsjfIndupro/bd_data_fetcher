@@ -246,3 +246,83 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
             gene_field="symbol",
             gene_column_name="Gene",
         )
+
+    def build_protein_expression_csv(self, uniprotkb_ac: str, folder_path: str):
+        """
+        Build a protein expression CSV file for a given uniprotkb_ac.
+        Stores all protein expression data in the CSV file, appending to existing data.
+        """
+        file_name = FileNames.PROTEIN_EXPRESSION.value
+        columns = ["Protein", "Expression Value", "Indication", "Tissue Type", "Sample Name", "Sample Type", "Study Name"]
+
+        # Manage CSV file
+        self._manage_csv_file(folder_path, file_name, columns)
+
+        # Get study metadata to map study names to study IDs
+        try:
+            study_metadata_response = self.umap_client._get_study_metadata()
+        except Exception as e:
+            logger.exception(f"Error in API call for study metadata: {e}")
+            return None
+
+        # Create mapping from study names to study IDs for regular studies and tumor_normal_studies
+        study_name_to_id = {}
+        for study in study_metadata_response.data:
+            if study.study_name in regular_studies or study.study_name in tumor_normal_studies:
+                study_name_to_id[study.study_name] = study.id
+
+        # Get study IDs for the studies we want to include
+        study_ids = list(study_name_to_id.values())
+
+        if not study_ids:
+            logger.warning("No matching studies found in study metadata")
+            return None
+
+        # Get external proteomics data for the specified studies
+        external_data = self.get_external_proteomics_data(
+            uniprotkb_acs=[uniprotkb_ac],
+            study_ids=study_ids
+        )
+
+        # Filter data to only include studies and indications from regular_studies and tumor_normal_studies
+        filtered_data = []
+        for data_point in external_data:
+            # Check if the study name matches a key in regular_studies
+            if data_point.study_name in regular_studies:
+                # Check if the indication matches the value for this study
+                expected_indication = regular_studies[data_point.study_name]
+                if data_point.indication.strip() == expected_indication.strip():
+                    filtered_data.append(data_point)
+            # Check if the study name matches a key in tumor_normal_studies
+            elif data_point.study_name in tumor_normal_studies:
+                # Check if the indication matches the value for this study
+                expected_indication = tumor_normal_studies[data_point.study_name]
+                if data_point.indication.strip() == expected_indication.strip():
+                    filtered_data.append(data_point)
+
+        if not filtered_data:
+            logger.info(f"No external proteomics data found for uniprotkb_ac: {uniprotkb_ac} in configured studies")
+            return None
+
+        # Convert to DataFrame
+        data_df = pd.DataFrame([obj.dict() for obj in filtered_data])
+
+        if not data_df.empty:
+            # Transform data using common method
+            column_mapping = {
+                "Protein": "symbol",
+                "Expression Value": "value",
+                "Indication": "indication",
+                "Tissue Type": "tissue_type",
+                "Sample Name": "sample_name",
+                "Sample Type": "sample_type",
+                "Study Name": "study_name",
+            }
+            transformed_df = self._transform_data_to_csv_format(
+                data_df, column_mapping
+            )
+
+            # Append to CSV file
+            self._append_to_csv_file(folder_path, file_name, transformed_df, columns)
+
+        return data_df

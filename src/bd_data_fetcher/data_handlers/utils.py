@@ -13,6 +13,7 @@ class FileNames(Enum):
     NORMAL_PROTEOMICS_DATA = "normal_proteomics_data.csv"
     EXTERNAL_PROTEOMICS_DATA = "external_proteomics_data.csv"
     STUDY_SPECIFIC_DATA = "study_specific_data.csv"
+    PROTEIN_EXPRESSION = "protein_expression.csv"
 
     # Gene Expression data
     NORMAL_GENE_EXPRESSION = "normal_gene_expression.csv"
@@ -48,7 +49,7 @@ class FileNames(Enum):
         """
         category_mapping = {
             "depmap": [cls.DEPMAP_DATA],
-            "external_protein_expression": [cls.NORMAL_PROTEOMICS_DATA, cls.EXTERNAL_PROTEOMICS_DATA, cls.STUDY_SPECIFIC_DATA],
+            "external_protein_expression": [cls.NORMAL_PROTEOMICS_DATA, cls.EXTERNAL_PROTEOMICS_DATA, cls.STUDY_SPECIFIC_DATA, cls.PROTEIN_EXPRESSION],
             "gene_expression": [cls.NORMAL_GENE_EXPRESSION, cls.GENE_EXPRESSION, cls.GENE_TUMOR_NORMAL_RATIOS],
             "wce": [cls.WCE_DATA, cls.CELL_LINE_SIGMOIDAL_CURVES],
             "umap": [cls.UMAP_DATA, cls.CELL_LINE_TARGETING],
@@ -84,6 +85,7 @@ class FileNames(Enum):
             cls.NORMAL_PROTEOMICS_DATA.value: "external_protein_expression",
             cls.EXTERNAL_PROTEOMICS_DATA.value: "external_protein_expression",
             cls.STUDY_SPECIFIC_DATA.value: "external_protein_expression",
+            cls.PROTEIN_EXPRESSION.value: "external_protein_expression",
             cls.NORMAL_GENE_EXPRESSION.value: "gene_expression",
             cls.GENE_EXPRESSION.value: "gene_expression",
             cls.GENE_TUMOR_NORMAL_RATIOS.value: "gene_expression",
