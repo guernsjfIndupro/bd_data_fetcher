@@ -90,7 +90,7 @@ def display_data_handlers_overview() -> None:
         (
             "ExternalProteinExpressionDataHandler",
             "Manages external proteomics data from various cancer studies",
-            "normal_proteomics_data.csv, external_proteomics_data.csv, study_specific_data.csv"
+            "normal_proteomics_data.csv, study_specific_data.csv"
         ),
     ]
 
@@ -171,6 +171,20 @@ def data(
         depmap_handler = DepMapDataHandler()
         external_protein_handler = ExternalProteinExpressionDataHandler()
 
+        # Retrieve all cell lines for all proteins and combine them
+        console.print(f"\n[bold]Retrieving cell lines for {len(symbol_mappings)} proteins...[/bold]")
+        all_cell_lines = set()
+        for symbol, uniprotkb_ac in symbol_mappings.items():
+            try:
+                cell_lines = umap_handler.get_cell_lines(uniprotkb_ac)
+                all_cell_lines.update(cell_lines)
+                console.print(f"  [green]✓[/green] {symbol}: Found {len(cell_lines)} cell lines")
+            except Exception as e:
+                console.print(f"  [yellow]⚠[/yellow] {symbol}: Failed to get cell lines: {e}")
+                continue
+
+        console.print(f"[bold]Combined cell line set: {len(all_cell_lines)} unique cell lines[/bold]")
+
         # Generate gene expression data for each protein
         console.print(
             f"\n[bold]Generating data for {len(symbol_mappings)} proteins...[/bold]"
@@ -180,23 +194,16 @@ def data(
             console.print(f"\n[bold cyan]Processing {symbol} ({uniprotkb_ac})...[/bold cyan]")
 
             try:
-                # Get cell lines
-                cell_line_set = umap_handler.get_cell_lines(uniprotkb_ac)
-                console.print(f"  [green]✓[/green] Found {len(cell_line_set)} cell lines")
-
-                # Generate all data types
-                if cell_line_set:
-                    wce_data = wce_handler.build_wce_data_csv(uniprotkb_ac, cell_line_set, output_dir)
-                    wce_handler.build_cell_line_sigmoidal_curves_csv(cell_line_set, output_dir)
-                    depmap_data = depmap_handler.build_dep_map_data_csv([uniprotkb_ac], folder_path=output_dir, cell_line_set=cell_line_set)
-                    external_protein_handler.build_normal_proteomics_csv(uniprotkb_ac, output_dir)
-                    external_protein_handler.build_study_specific_csv(uniprotkb_ac, output_dir)
-                    gene_handler.build_normal_gene_expression_csv(uniprotkb_ac, output_dir)
-                    gene_handler.build_gene_expression_csv(uniprotkb_ac, output_dir)
-                    gene_handler.build_gene_tumor_normal_ratios_csv(uniprotkb_ac, output_dir)
-                    umap_handler.get_umap_data_csv(uniprotkb_ac, output_dir)
-                else:
-                    console.print(f"  [yellow]⚠[/yellow] No cell lines found, skipping cell line data")
+                # Generate all data types using the combined cell line set
+                wce_data = wce_handler.build_wce_data_csv(uniprotkb_ac, all_cell_lines, output_dir)
+                wce_handler.build_cell_line_sigmoidal_curves_csv(all_cell_lines, output_dir)
+                depmap_data = depmap_handler.build_dep_map_data_csv([uniprotkb_ac], folder_path=output_dir, cell_line_set=all_cell_lines)
+                external_protein_handler.build_normal_proteomics_csv(uniprotkb_ac, output_dir)
+                external_protein_handler.build_study_specific_csv(uniprotkb_ac, output_dir)
+                gene_handler.build_normal_gene_expression_csv(uniprotkb_ac, output_dir)
+                gene_handler.build_gene_expression_csv(uniprotkb_ac, output_dir)
+                gene_handler.build_gene_tumor_normal_ratios_csv(uniprotkb_ac, output_dir)
+                umap_handler.get_umap_data_csv(uniprotkb_ac, output_dir)
 
                 console.print(f"  [bold green]✓[/bold green] Completed {symbol}")
 
