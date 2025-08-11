@@ -49,7 +49,7 @@ class BaseGraph(ABC):
             for csv_file in csv_files:
                 file_name = csv_file.name
                 try:
-                    self.data[file_name] = pd.read_csv(csv_file)
+                    self.data[file_name] = pd.read_csv(csv_file, low_memory=False)
                     logger.info(f"Loaded CSV file '{file_name}' with {len(self.data[file_name])} rows")
                 except Exception as e:
                     logger.warning(f"Error reading CSV file {file_name}: {e}")
