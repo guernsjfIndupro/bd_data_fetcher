@@ -177,3 +177,6 @@ logs/
 
 # Images
 *.png
+
+# Mac stuff
+*.DS_Store
