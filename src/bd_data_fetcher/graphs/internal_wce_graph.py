@@ -316,9 +316,6 @@ class InternalWCEGraph(BaseGraph):
                     plt.xlabel('Standardized Rankings (0-1000)', fontsize=14, fontweight='bold')
                     plt.ylabel('Log10 Normalized Intensity', fontsize=14, fontweight='bold')
 
-                    # Add legend
-                    plt.legend(loc='upper right', fontsize=10)
-
                     # Remove top and right borders
                     ax = plt.gca()
                     ax.spines['top'].set_visible(False)

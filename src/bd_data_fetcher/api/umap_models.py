@@ -118,7 +118,7 @@ class RNAGeneExpressionData(BaseModel):
 
 class ProteomicsNormalExpressionData(BaseModel):
     id: int
-    log2_expression: float
+    copies_per_cell: float
     indication: str
     protein_symbol: str
     protein_uniprotkb_ac: str

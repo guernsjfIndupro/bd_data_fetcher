@@ -63,7 +63,7 @@ class BaseDataHandler:
         # Check if file exists
         if os.path.exists(csv_path):
             try:
-                existing_df = pd.read_csv(csv_path)
+                existing_df = pd.read_csv(csv_path, low_memory=False)
                 return existing_df
             except Exception as e:
                 # Create new file with specified columns
@@ -99,7 +99,7 @@ class BaseDataHandler:
 
         # Read existing data
         try:
-            existing_df = pd.read_csv(csv_path)
+            existing_df = pd.read_csv(csv_path, low_memory=False)
         except (FileNotFoundError, ValueError):
             existing_df = pd.DataFrame(columns=default_columns)
 
@@ -126,8 +126,12 @@ class BaseDataHandler:
             existing_df = existing_df.reindex(columns=all_columns, fill_value=None)
             data_df = data_df.reindex(columns=all_columns, fill_value=None)
             
+            # Filter out empty/NA entries before concatenation to avoid FutureWarning
+            existing_df_filtered = existing_df.dropna(how='all')
+            data_df_filtered = data_df.dropna(how='all')
+            
             # Now concatenate
-            combined_df = pd.concat([existing_df, data_df], ignore_index=True)
+            combined_df = pd.concat([existing_df_filtered, data_df_filtered], ignore_index=True)
             combined_df.to_csv(csv_path, index=False)
 
     def _transform_data_to_csv_format(

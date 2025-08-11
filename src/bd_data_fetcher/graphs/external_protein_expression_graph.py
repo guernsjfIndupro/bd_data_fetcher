@@ -108,13 +108,18 @@ class ExternalProteinExpressionGraph(BaseGraph):
             )
 
             # Customize the plot
-            plt.title('Normal Proteomics Expression Data', fontsize=16, fontweight='bold', pad=25)
+            plt.title('Normal Proteomics Copies per Cell Data', fontsize=16, fontweight='bold', pad=25)
             plt.xlabel('Indications/Tissue Types', fontsize=14, fontweight='bold')
             plt.ylabel('Proteins', fontsize=14, fontweight='bold')
 
             # Rotate x-axis labels for better readability
             plt.xticks(rotation=45, ha='right')
             plt.yticks(rotation=0)
+
+            # Add caveat about proteomics ruler method
+            plt.figtext(0.98, 0.02, 'All copy numbers calculated using the proteomics ruler method', 
+                       fontsize=10, ha='right', va='bottom', 
+                       bbox=dict(boxstyle='round,pad=0.3', facecolor='lightgray', alpha=0.8))
 
             plt.tight_layout()
 

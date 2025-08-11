@@ -71,7 +71,7 @@ class ExternalProteinExpressionDataHandler(BaseDataHandler):
             file_name=file_name,
             data_df=data_df,
             group_field="indication",
-            value_field="log2_expression",
+            value_field="copies_per_cell",
             gene_field="protein_symbol",
             gene_column_name="Gene",
         )

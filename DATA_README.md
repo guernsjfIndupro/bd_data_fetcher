@@ -76,7 +76,7 @@ This file contains proteomics data from normal tissues across various sites.
 
 - **Gene**: Gene symbol of a protein
 
-- **Cancer Indications**: A series of cancer indication columns with normal proteomics values
+- **Cancer Indications**: A series of cancer indication columns with copies per cell values
 
 ### Cell Line and Dependency Data
 
