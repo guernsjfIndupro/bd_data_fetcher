@@ -174,3 +174,6 @@ logs/
 # Excel files
 *.xlsx
 *.csv
+
+# Images
+*.png

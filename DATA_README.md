@@ -1,0 +1,102 @@
+This directory contains multiple folders containing data about a collection
+of proteins, this file explains what each file in those folders contains.
+
+## Data Files
+
+### gene_tumor_normal_ratios.csv
+This file contains gene expression ratios comparing tumor tissue to normal tissue across different cancer types. The data shows how gene expression levels differ between cancerous and normal tissues.
+
+**Headers:**
+- Gene: Gene symbol of a protein
+- A series of cancer indications
+
+### gene_expression.csv
+This file contains gene expression data with expression values for various genes across different tissue types and cancer status.
+
+**Headers:**
+- Gene: Gene symbol of a protein
+- Expression Value: Log2 expression value
+- Primary Site: Site of the cancer sample
+- Is Cancer: Boolean value indicating if this sample was cancerous
+
+### normal_gene_expression.csv
+This file contains gene expression data specifically from normal (non-cancerous) tissues across various anatomical sites.
+
+**Headers:**
+- Gene: Gene symbol of a protein
+- A series of cancer indications
+
+### study_specific_data.csv
+This file contains study-specific protein expression data across different cancer types and subtypes from specific research studies.
+
+**Headers:**
+- Gene: Gene symbol of a protein
+- A series of cancer indications
+
+### protein_expression.csv
+This file contains protein expression data from various studies, including different tissue types and sample information.
+
+**Headers:**
+- Protein: Gene symbol
+- Expression Value: Log2 gene expression
+- Indication
+- Tissue Type
+- Sample Name
+- Sample Type
+- Study Name
+
+### normal_proteomics_data.csv
+This file contains proteomics data from normal tissues across various sites.
+
+**Headers:**
+- Gene: Gene symbol of a protein
+- A series of cancer indications
+
+### depmap_data.csv
+This file contains DepMap (Cancer Dependency Map) data showing protein expression across different cell lines with cancer lineage and disease information.
+
+**Headers:**
+- Protein Symbol
+- UniProtKB AC
+- Cell Line
+- Onc Lineage
+- Onc Primary Disease
+- Onc Subtype
+- TPM Log2
+
+### wce_data.csv
+This file contains whole cell extract (WCE) data with protein intensity rankings from specific cell lines.
+
+**Headers:**
+- Gene: Gene symbol of a protein
+- Cell Line
+- Onc Lineage
+- Onc Subtype
+- Weight Normalized Intensity Ranking
+- Experiment Type
+- Title
+- Copies Per Cell
+- Is Mapped: Currently broken, I may remove this
+
+### cell_line_sigmoidal_curves.csv
+This file contains sigmoidal curve definitions for WCE DIA data for multiple cell lines.
+
+**Headers:**
+- Cell_Line_Name: Name of a cell line
+- Is_Y_Axis: Boolean indicating if the data is for the X or Y axis
+- Point_0 through Point_499: Points on the sigmoidal curve
+
+### umap_data.csv
+This file contains uMap replicate set data
+
+**Headers:**
+- Replicate Set ID
+- Cell Line
+- Chemistry
+- Target Protein
+- Protein Symbol
+- Protein UniProtKB AC
+- Log2 FC
+- P-value
+- Number of Peptides
+- Binder 
