@@ -256,16 +256,17 @@ class GeneExpressionGraph(BaseGraph):
             return 0.0, anchor_median, other_median, pd.DataFrame(), 0
         
         # Create a simple DataFrame with both genes' expression values for each sample
-        anchor_tumor = tumor_data[tumor_data['Gene'] == anchor_gene][['Primary Site', 'Expression Value']].copy()
-        other_tumor = tumor_data[tumor_data['Gene'] == other_gene][['Primary Site', 'Expression Value']].copy()
+        
+        anchor_tumor = tumor_data[tumor_data['Gene'] == anchor_gene][['Sample Name', 'Expression Value']].copy()
+        other_tumor = tumor_data[tumor_data['Gene'] == other_gene][['Sample Name', 'Expression Value']].copy()
         
         # Rename columns to avoid conflicts
         anchor_tumor = anchor_tumor.rename(columns={'Expression Value': anchor_gene})
         other_tumor = other_tumor.rename(columns={'Expression Value': other_gene})
         
-        # Merge the data to get both genes' expression for each sample
-        combined_tumor = pd.merge(anchor_tumor, other_tumor, on='Primary Site', how='inner')
-        
+        # Merge the data to get both genes' expression for each sample using Sample Name
+        combined_tumor = pd.merge(anchor_tumor, other_tumor, on='Sample Name', how='inner')
+
         if combined_tumor.empty:
             return 0.0, anchor_median, other_median, combined_tumor, 0
         
@@ -308,9 +309,21 @@ class GeneExpressionGraph(BaseGraph):
                 logger.error(f"Missing required columns in gene expression data: {missing_columns}")
                 return False
 
+            # Check for Sample Name column (optional but preferred)
+            has_sample_name = 'Sample Name' in df.columns
+            if has_sample_name:
+                logger.info("Sample Name column found - will use for precise sample matching")
+            else:
+                logger.warning("Sample Name column not found - will use Primary Site aggregation")
+
             # Ensure numeric column is properly formatted
             df['Expression Value'] = pd.to_numeric(df['Expression Value'], errors='coerce')
-            df = df.dropna(subset=['Expression Value', 'Gene', 'Primary Site', 'Is Cancer'])
+            
+            # Drop rows with missing required data
+            drop_columns = ['Expression Value', 'Gene', 'Primary Site', 'Is Cancer']
+            if has_sample_name:
+                drop_columns.append('Sample Name')
+            df = df.dropna(subset=drop_columns)
 
             if df.empty:
                 logger.error("No valid numeric data found in gene expression data")

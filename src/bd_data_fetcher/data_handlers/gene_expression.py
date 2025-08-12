@@ -116,7 +116,7 @@ class GeneExpressionDataHandler(BaseDataHandler):
         Stores all gene expression data in the CSV file, appending to existing data.
         """
         file_name = FileNames.GENE_EXPRESSION.value
-        columns = ["Gene", "Expression Value", "Primary Site", "Is Cancer"]
+        columns = ["Gene", "Expression Value", "Primary Site", "Is Cancer", "Sample Name"]
 
         # Manage CSV file
         self._manage_csv_file(folder_path, file_name, columns)
@@ -132,6 +132,7 @@ class GeneExpressionDataHandler(BaseDataHandler):
                 "Expression Value": "expression_value",
                 "Primary Site": "primary_site",
                 "Is Cancer": "is_cancer",
+                "Sample Name": "sample_name",
             }
             transformed_df = self._transform_data_to_csv_format(
                 data_df, column_mapping
