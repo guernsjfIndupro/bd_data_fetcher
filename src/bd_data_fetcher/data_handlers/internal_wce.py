@@ -202,7 +202,7 @@ class WCEDataHandler(BaseDataHandler):
         Column A: Cell Line Name
         Column B: X or Y boolean (0 for X, 1 for Y)
 
-        The following 500 points columns will represent the points on the sigmoidal curve.
+        The following 1000 points columns will represent the points on the sigmoidal curve.
 
         This should allow us to plot the sigmoidal curve for each cell line and avoid the
         very expensive operation that actually builds the sigmoidal curve.
@@ -213,8 +213,8 @@ class WCEDataHandler(BaseDataHandler):
         """
         file_name = FileNames.CELL_LINE_SIGMOIDAL_CURVES.value
 
-        # Create columns: Cell Line Name, X/Y indicator, and 500 curve points
-        columns = ["Cell_Line_Name", "Is_Y_Axis"] + [f"Point_{i}" for i in range(500)]
+        # Create columns: Cell Line Name, X/Y indicator, and 1000 curve points
+        columns = ["Cell_Line_Name", "Is_Y_Axis"] + [f"Point_{i}" for i in range(1000)]
 
         # Manage CSV file
         self._manage_csv_file(folder_path, file_name, columns)
@@ -256,9 +256,9 @@ class WCEDataHandler(BaseDataHandler):
                 curve_data = self.build_generalizable_sigmoidal_curve(cell_line_data)
                 x_axis, y_axis = curve_data
 
-                # Create rows for X and Y axes with evenly spaced 500 points between 0 and 1000
-                # Sample 500 points evenly spaced between 0 and 1000
-                x_range = np.linspace(0, 1000, 500)
+                # Create rows for X and Y axes with evenly spaced 1000 points between 0 and 1000
+                # Sample 1000 points evenly spaced between 0 and 1000
+                x_range = np.linspace(0, 1000, 1000)
                 
                 # Interpolate the curve values at these evenly spaced x points
                 if len(x_axis) > 0:
@@ -266,7 +266,7 @@ class WCEDataHandler(BaseDataHandler):
                     y_sampled = np.interp(x_range, x_axis, y_axis)
                 else:
                     # Fallback if curve is empty
-                    y_sampled = np.zeros(500)
+                    y_sampled = np.zeros(1000)
                 
                 x_row = [cell_line_name, 0] + list(x_range)
                 y_row = [cell_line_name, 1] + list(y_sampled)

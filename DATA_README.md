@@ -131,7 +131,7 @@ This file contains sigmoidal curve definitions for WCE DIA data for multiple cel
 
 - **Is_Y_Axis**: Boolean indicating if the data is for the X or Y axis
 
-- **Point_0 through Point_499**: Points on the sigmoidal curve (500 total points)
+- **Point_0 through Point_999**: Points on the sigmoidal curve (1000 total points)
 
 ### UMap Analysis Data
 

@@ -274,7 +274,7 @@ class InternalWCEGraph(BaseGraph):
                     from scipy.interpolate import make_interp_spline
                     
                     # Create smooth curve
-                    x_smooth = np.linspace(0, 1000, 1000)  # More points for smoothness
+                    x_smooth = np.linspace(0, 1000, 1000)  # 1000 points for smoothness
                     spline = make_interp_spline(x_values, y_values, k=3)  # Cubic spline
                     y_smooth = spline(x_smooth)
 

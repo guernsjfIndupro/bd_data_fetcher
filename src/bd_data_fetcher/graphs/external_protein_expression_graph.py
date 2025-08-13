@@ -99,22 +99,29 @@ class ExternalProteinExpressionGraph(BaseGraph):
             plt.figure(figsize=(max(12, len(expression_columns) * 0.8), max(8, len(df) * 0.3)))
             sns.set_style("whitegrid")
 
-            # Prepare data for heatmap
+            # Prepare data for heatmap and apply log10 transformation
             heatmap_data = df.set_index('Gene')[expression_columns]
+            
+            # Apply log10 transformation to copies per cell values
+            # Replace zeros with NaN to avoid log(0) issues and prevent artificial outliers
+            heatmap_data_log10 = heatmap_data.copy()
+            heatmap_data_log10[heatmap_data_log10 == 0] = np.nan
+            heatmap_data_log10 = np.log10(heatmap_data_log10)
 
-            # Create heatmap
+            # Create heatmap with masked zeros
             sns.heatmap(
-                heatmap_data,
+                heatmap_data_log10,
                 annot=False,
                 cmap='Blues',
-                cbar_kws={'label': 'Log2 Expression'},
+                cbar_kws={'label': 'Log10(Copies per Cell)'},
                 linewidths=0.2,
                 linecolor='white',
-                square=True
+                square=True,
+                mask=heatmap_data_log10.isna()  # Mask NaN values (original zeros)
             )
 
             # Customize the plot
-            plt.title('Normal Proteomics Copies per Cell Data', fontsize=16, fontweight='bold', pad=25)
+            plt.title('Normal Proteomics Log10(Copies per Cell) Data', fontsize=16, fontweight='bold', pad=25)
             plt.xlabel('Indications/Tissue Types', fontsize=14, fontweight='bold')
             plt.ylabel('Proteins', fontsize=14, fontweight='bold')
 
@@ -182,22 +189,29 @@ class ExternalProteinExpressionGraph(BaseGraph):
             plt.figure(figsize=(max(12, len(expression_columns) * 0.8), max(8, len(df) * 0.3)))
             sns.set_style("whitegrid")
 
-            # Prepare data for heatmap
+            # Prepare data for heatmap and apply log10 transformation
             heatmap_data = df.set_index('Gene')[expression_columns]
+            
+            # Apply log10 transformation to copies per cell values
+            # Replace zeros with NaN to avoid log(0) issues and prevent artificial outliers
+            heatmap_data_log10 = heatmap_data.copy()
+            heatmap_data_log10[heatmap_data_log10 == 0] = np.nan
+            heatmap_data_log10 = np.log10(heatmap_data_log10)
 
-            # Create heatmap
+            # Create heatmap with masked zeros
             sns.heatmap(
-                heatmap_data,
+                heatmap_data_log10,
                 annot=False,
                 cmap='Blues',
-                cbar_kws={'label': 'Log2 Expression'},
+                cbar_kws={'label': 'Log10(Copies per Cell)'},
                 linewidths=0.2,
                 linecolor='white',
-                square=True
+                square=True,
+                mask=heatmap_data_log10.isna()  # Mask NaN values (original zeros)
             )
 
             # Customize the plot
-            plt.title('Study-Specific Proteomics Expression Data', fontsize=16, fontweight='bold', pad=25)
+            plt.title('Tumor Over Normal Proteomics', fontsize=16, fontweight='bold', pad=25)
             plt.xlabel('Indications/Studies', fontsize=14, fontweight='bold')
             plt.ylabel('Proteins', fontsize=14, fontweight='bold')
 

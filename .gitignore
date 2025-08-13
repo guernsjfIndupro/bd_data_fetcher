@@ -180,3 +180,4 @@ logs/
 
 # Mac stuff
 *.DS_Store
+!human_string_protein_scores.csv
