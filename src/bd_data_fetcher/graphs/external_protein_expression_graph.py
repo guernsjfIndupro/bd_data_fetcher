@@ -103,9 +103,33 @@ class ExternalProteinExpressionGraph(BaseGraph):
             heatmap_data = df.set_index('Gene')[expression_columns]
             
             # Apply log10 transformation to copies per cell values
-            # Replace zeros with NaN to avoid log(0) issues and prevent artificial outliers
+            # Replace zeros and negative values with NaN to avoid log(0) and log(negative) issues
             heatmap_data_log10 = heatmap_data.copy()
-            heatmap_data_log10[heatmap_data_log10 == 0] = np.nan
+            
+            # QC: Count and log invalid values before conversion
+            zero_count = (heatmap_data_log10 == 0).sum().sum()
+            negative_count = (heatmap_data_log10 < 0).sum().sum()
+            null_count = heatmap_data_log10.isna().sum().sum()
+            total_values = heatmap_data_log10.size
+            
+            if zero_count > 0 or negative_count > 0 or null_count > 0:
+                logger.info(f"QC: Found {zero_count} zeros, {negative_count} negative values, and {null_count} null values out of {total_values} total values")
+                logger.info(f"QC: Invalid values represent {((zero_count + negative_count + null_count) / total_values * 100):.2f}% of the data")
+                
+                # Log specific columns with issues if there are many
+                if zero_count > 0:
+                    zero_cols = heatmap_data_log10.columns[heatmap_data_log10.eq(0).any()].tolist()
+                    logger.info(f"QC: Columns with zeros: {zero_cols}")
+                
+                if negative_count > 0:
+                    neg_cols = heatmap_data_log10.columns[heatmap_data_log10.lt(0).any()].tolist()
+                    logger.info(f"QC: Columns with negative values: {neg_cols}")
+                
+                if null_count > 0:
+                    null_cols = heatmap_data_log10.columns[heatmap_data_log10.isna().any()].tolist()
+                    logger.info(f"QC: Columns with null values: {null_cols}")
+            
+            heatmap_data_log10[heatmap_data_log10 <= 0] = np.nan
             heatmap_data_log10 = np.log10(heatmap_data_log10)
 
             # Create heatmap with masked zeros
@@ -193,9 +217,33 @@ class ExternalProteinExpressionGraph(BaseGraph):
             heatmap_data = df.set_index('Gene')[expression_columns]
             
             # Apply log10 transformation to copies per cell values
-            # Replace zeros with NaN to avoid log(0) issues and prevent artificial outliers
+            # Replace zeros and negative values with NaN to avoid log(0) and log(negative) issues
             heatmap_data_log10 = heatmap_data.copy()
-            heatmap_data_log10[heatmap_data_log10 == 0] = np.nan
+            
+            # QC: Count and log invalid values before conversion
+            zero_count = (heatmap_data_log10 == 0).sum().sum()
+            negative_count = (heatmap_data_log10 < 0).sum().sum()
+            null_count = heatmap_data_log10.isna().sum().sum()
+            total_values = heatmap_data_log10.size
+            
+            if zero_count > 0 or negative_count > 0 or null_count > 0:
+                logger.info(f"QC: Found {zero_count} zeros, {negative_count} negative values, and {null_count} null values out of {total_values} total values")
+                logger.info(f"QC: Invalid values represent {((zero_count + negative_count + null_count) / total_values * 100):.2f}% of the data")
+                
+                # Log specific columns with issues if there are many
+                if zero_count > 0:
+                    zero_cols = heatmap_data_log10.columns[heatmap_data_log10.eq(0).any()].tolist()
+                    logger.info(f"QC: Columns with zeros: {zero_cols}")
+                
+                if negative_count > 0:
+                    neg_cols = heatmap_data_log10.columns[heatmap_data_log10.lt(0).any()].tolist()
+                    logger.info(f"QC: Columns with negative values: {neg_cols}")
+                
+                if null_count > 0:
+                    null_cols = heatmap_data_log10.columns[heatmap_data_log10.isna().any()].tolist()
+                    logger.info(f"QC: Columns with null values: {null_cols}")
+            
+            heatmap_data_log10[heatmap_data_log10 <= 0] = np.nan
             heatmap_data_log10 = np.log10(heatmap_data_log10)
 
             # Create heatmap with masked zeros

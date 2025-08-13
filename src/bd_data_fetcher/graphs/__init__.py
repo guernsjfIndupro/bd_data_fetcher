@@ -7,6 +7,7 @@ from bd_data_fetcher.graphs.external_protein_expression_graph import (
 )
 from bd_data_fetcher.graphs.gene_expression_graph import GeneExpressionGraph
 from bd_data_fetcher.graphs.internal_wce_graph import InternalWCEGraph
+from bd_data_fetcher.graphs.string_graph import StringGraph
 from bd_data_fetcher.graphs.umap_graph import UMapGraph
 
 __all__ = [
@@ -15,5 +16,6 @@ __all__ = [
     "ExternalProteinExpressionGraph",
     "GeneExpressionGraph",
     "InternalWCEGraph",
+    "StringGraph",
     "UMapGraph",
 ]
