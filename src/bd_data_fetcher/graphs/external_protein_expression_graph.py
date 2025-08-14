@@ -11,6 +11,7 @@ import seaborn as sns
 from bd_data_fetcher.data_handlers.utils import FileNames
 from bd_data_fetcher.graphs.base_graph import BaseGraph
 from bd_data_fetcher.api.umap_client import UMapClient
+from bd_data_fetcher.graphs.shared import TumorNormalColors
 
 logger = logging.getLogger(__name__)
 
@@ -237,18 +238,18 @@ class ExternalProteinExpressionGraph(BaseGraph):
             plt.figure(figsize=(max(12, len(expression_columns) * 0.8), max(8, len(df) * 0.3)))
             sns.set_style("whitegrid")
 
-            # Prepare data for heatmap and apply log10 transformation
+            # Prepare data for heatmap and apply log2 transformation for tumor/normal ratios
             heatmap_data = df.set_index('Gene')[expression_columns]
             
-            # Apply log10 transformation to copies per cell values
-            # Replace zeros and negative values with NaN to avoid log(0) and log(negative) issues
-            heatmap_data_log10 = heatmap_data.copy()
+            # Apply log2 transformation for tumor/normal ratios (study-specific data)
+            # Handle negative values properly for log transformation
+            heatmap_data_log2 = heatmap_data.copy()
             
             # QC: Count and log invalid values before conversion
-            zero_count = (heatmap_data_log10 == 0).sum().sum()
-            negative_count = (heatmap_data_log10 < 0).sum().sum()
-            null_count = heatmap_data_log10.isna().sum().sum()
-            total_values = heatmap_data_log10.size
+            zero_count = (heatmap_data_log2 == 0).sum().sum()
+            negative_count = (heatmap_data_log2 < 0).sum().sum()
+            null_count = heatmap_data_log2.isna().sum().sum()
+            total_values = heatmap_data_log2.size
             
             if zero_count > 0 or negative_count > 0 or null_count > 0:
                 logger.info(f"QC: Found {zero_count} zeros, {negative_count} negative values, and {null_count} null values out of {total_values} total values")
@@ -256,30 +257,35 @@ class ExternalProteinExpressionGraph(BaseGraph):
                 
                 # Log specific columns with issues if there are many
                 if zero_count > 0:
-                    zero_cols = heatmap_data_log10.columns[heatmap_data_log10.eq(0).any()].tolist()
+                    zero_cols = heatmap_data_log2.columns[heatmap_data_log2.eq(0).any()].tolist()
                     logger.info(f"QC: Columns with zeros: {zero_cols}")
                 
                 if negative_count > 0:
-                    neg_cols = heatmap_data_log10.columns[heatmap_data_log10.lt(0).any()].tolist()
+                    neg_cols = heatmap_data_log2.columns[heatmap_data_log2.lt(0).any()].tolist()
                     logger.info(f"QC: Columns with negative values: {neg_cols}")
                 
                 if null_count > 0:
-                    null_cols = heatmap_data_log10.columns[heatmap_data_log10.isna().any()].tolist()
+                    null_cols = heatmap_data_log2.columns[heatmap_data_log2.isna().any()].tolist()
                     logger.info(f"QC: Columns with null values: {null_cols}")
             
-            heatmap_data_log10[heatmap_data_log10 <= 0] = np.nan
-            heatmap_data_log10 = np.log10(heatmap_data_log10)
+            # Handle zeros and negative values properly for log2 transformation
+            # Only convert zeros to NaN, keep negative values for log2
+            heatmap_data_log2[heatmap_data_log2 == 0] = np.nan
+            
+            # Apply log2 transformation (can handle negative values)
+            heatmap_data_log2 = np.log2(heatmap_data_log2)
 
-            # Create heatmap with masked zeros
+            # Create heatmap with masked zeros and diverging colormap for tumor/normal ratios
             sns.heatmap(
-                heatmap_data_log10,
+                heatmap_data_log2,
                 annot=False,
-                cmap='Blues',
-                cbar_kws={'label': 'Log10(Copies per Cell)'},
+                cmap='RdBu_r',  # Red-Blue diverging colormap for tumor/normal ratios
+                center=0,  # Center at 0 for log2 ratios
+                cbar_kws={'label': 'Log2(Tumor/Normal Ratio)'},
                 linewidths=0.2,
                 linecolor='white',
                 square=True,
-                mask=heatmap_data_log10.isna()  # Mask NaN values (original zeros)
+                mask=heatmap_data_log2.isna()  # Mask NaN values (original zeros)
             )
 
             # Customize the plot
@@ -450,25 +456,32 @@ class ExternalProteinExpressionGraph(BaseGraph):
                     other_tumor = other_protein_data[other_protein_data['Tissue Type'] == 'Tumor']['Expression Value']
                     other_normal = other_protein_data[other_protein_data['Tissue Type'] == 'Normal']['Expression Value']
                     
-                    # Create boxplot data
+                    # Create boxplot data - always show Normal then Tumor for each protein
                     plot_data = []
                     labels = []
+                    colors = []
+                    
+                    # Anchor protein: Normal first, then Tumor
+                    if len(anchor_normal) > 0:
+                        plot_data.append(anchor_normal)
+                        labels.append(f'{self.anchor_protein}\nNormal')
+                        colors.append(TumorNormalColors.NORMAL)
                     
                     if len(anchor_tumor) > 0:
                         plot_data.append(anchor_tumor)
                         labels.append(f'{self.anchor_protein}\nTumor')
+                        colors.append(TumorNormalColors.TUMOR)
                     
-                    if len(anchor_normal) > 0:
-                        plot_data.append(anchor_normal)
-                        labels.append(f'{self.anchor_protein}\nNormal')
+                    # Other protein: Normal first, then Tumor
+                    if len(other_normal) > 0:
+                        plot_data.append(other_normal)
+                        labels.append(f'{other_protein}\nNormal')
+                        colors.append(TumorNormalColors.NORMAL)
                     
                     if len(other_tumor) > 0:
                         plot_data.append(other_tumor)
                         labels.append(f'{other_protein}\nTumor')
-                    
-                    if len(other_normal) > 0:
-                        plot_data.append(other_normal)
-                        labels.append(f'{other_protein}\nNormal')
+                        colors.append(TumorNormalColors.TUMOR)
                     
                     if not plot_data:
                         logger.warning(f"No data available for {indication} - {self.anchor_protein} vs {other_protein}")
@@ -477,39 +490,55 @@ class ExternalProteinExpressionGraph(BaseGraph):
                     # Create individual plot
                     fig, ax = plt.subplots(figsize=(10, 6))
                     
-                    # Create boxplot with individual points
-                    bp = ax.boxplot(plot_data, labels=labels, patch_artist=True, 
+                    # Create boxplot with individual points and grouped positioning
+                    positions = []
+                    current_pos = 1
+                    
+                    # Group positions: Anchor protein (Normal, Tumor) then Other protein (Normal, Tumor)
+                    # Add small gap between proteins
+                    for i in range(len(plot_data)):
+                        if i == 2:  # Start of other protein group
+                            current_pos += 0.5  # Add gap between proteins
+                        positions.append(current_pos)
+                        current_pos += 1
+                    
+                    bp = ax.boxplot(plot_data, labels=labels, positions=positions, patch_artist=True, 
                                   boxprops=dict(facecolor='lightblue', alpha=0.7),
-                                  medianprops=dict(color='red', linewidth=2),
+                                  medianprops=dict(color='lightgray', linewidth=2),
                                   flierprops=dict(marker='o', markerfacecolor='red', markersize=4))
                     
-                    # Add individual data points with different colors for anchor vs other protein
-                    colors = ['darkblue', 'darkblue', 'darkgreen', 'darkgreen']  # Anchor, Anchor, Other, Other
-                    for i, data in enumerate(plot_data):
-                        if i < len(colors):
-                            # Add jitter to x-coordinates for better visibility
-                            x_pos = i + 1
-                            jitter = np.random.normal(0, 0.05, len(data))
-                            ax.scatter(x_pos + jitter, data, alpha=0.6, s=20, 
-                                     color=colors[i], edgecolors='black', linewidth=0.5)
+                    # Color the boxplots using tumor/normal colors
+                    for patch, color in zip(bp['boxes'], colors):
+                        patch.set_facecolor(color)
+                        patch.set_alpha(0.7)
+                    
+                    # Add individual data points with tumor/normal colors
+                    for i, (data, color, pos) in enumerate(zip(plot_data, colors, positions)):
+                        # Add jitter to x-coordinates for better visibility
+                        jitter = np.random.normal(0, 0.05, len(data))
+                        ax.scatter(pos + jitter, data, alpha=0.6, s=20, 
+                                 color=color, edgecolors='black', linewidth=0.5, zorder=10)
                     
                     # Customize the plot
                     ax.set_title(f'{indication}\n{self.anchor_protein} vs {other_protein}', 
                                fontsize=14, fontweight='bold')
                     ax.set_ylabel('Expression Value (Log2)', fontsize=12)
-                    ax.set_xlabel('Protein and Tissue Type', fontsize=12)
-                    ax.grid(True, alpha=0.3)
                     
-                    # Rotate x-axis labels for better readability
-                    ax.tick_params(axis='x', rotation=45)
+                    # Remove top and right spines
+                    ax.spines['top'].set_visible(False)
+                    ax.spines['right'].set_visible(False)
                     
-                    # Add sample count annotations
-                    for i, data in enumerate(plot_data):
-                        x_pos = i + 1
+                    # Rotate x-axis labels to horizontal
+                    ax.tick_params(axis='x', rotation=0)
+                    
+                    # Update x-axis labels to include sample counts
+                    new_labels = []
+                    for i, (label, data) in enumerate(zip(labels, plot_data)):
                         count = len(data)
-                        ax.text(x_pos, ax.get_ylim()[1] * 0.95, f'n={count}', 
-                               ha='center', va='top', fontsize=10, 
-                               bbox=dict(boxstyle='round,pad=0.2', facecolor='white', alpha=0.8))
+                        new_labels.append(f'{label}\n(n={count})')
+                    
+                    ax.set_xticks(positions)
+                    ax.set_xticklabels(new_labels)
 
                     # Adjust layout
                     plt.tight_layout()
