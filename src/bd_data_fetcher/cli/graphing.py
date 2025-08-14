@@ -3,10 +3,8 @@
 import logging
 from pathlib import Path
 
-import pandas as pd
 import typer
 from rich.console import Console
-from rich.table import Table
 
 from bd_data_fetcher.data_handlers.utils import FileNames
 from bd_data_fetcher.graphs import (
@@ -62,23 +60,23 @@ class CSVGraphAnalyzer:
             # Check for human_string_protein_scores.csv in the root directory (parent of data_dir)
             string_file = self.data_dir_path.parent / "human_string_protein_scores.csv"
             string_exists = string_file.exists()
-            
+
             # Check for gene_expression.csv in the data directory
             gene_expr_file = self.data_dir_path / "gene_expression.csv"
             gene_expr_exists = gene_expr_file.exists()
-            
+
             if string_exists and gene_expr_exists:
-                console.print(f"[green]✓ STRING data files found - will generate protein interaction graphs[/green]")
+                console.print("[green]✓ STRING data files found - will generate protein interaction graphs[/green]")
                 return True
             elif string_exists and not gene_expr_exists:
-                console.print(f"[yellow]⚠ human_string_protein_scores.csv found but gene_expression.csv missing[/yellow]")
+                console.print("[yellow]⚠ human_string_protein_scores.csv found but gene_expression.csv missing[/yellow]")
             elif not string_exists and gene_expr_exists:
-                console.print(f"[yellow]⚠ gene_expression.csv found but human_string_protein_scores.csv missing[/yellow]")
+                console.print("[yellow]⚠ gene_expression.csv found but human_string_protein_scores.csv missing[/yellow]")
             else:
-                console.print(f"[blue]ℹ No STRING data files found - skipping protein interaction graphs[/blue]")
-            
+                console.print("[blue]ℹ No STRING data files found - skipping protein interaction graphs[/blue]")
+
             return False
-            
+
         except Exception as e:
             console.print(f"[red]Error checking STRING data availability: {e}[/red]")
             return False
@@ -159,9 +157,9 @@ class CSVGraphAnalyzer:
 
         # Check for STRING data and generate protein interaction graphs
         if self._check_string_data_availability():
-            console.print(f"\n[cyan]Processing STRING protein-protein interactions...[/cyan]")
+            console.print("\n[cyan]Processing STRING protein-protein interactions...[/cyan]")
             total_count += 1
-            
+
             try:
                 # Create StringGraph with default thresholds
                 string_graph = StringGraph(
@@ -170,10 +168,10 @@ class CSVGraphAnalyzer:
                 )
 
                 if string_graph.generate_graphs(str(output_path)):
-                    console.print(f"[green]✓ Successfully generated STRING protein interaction graphs[/green]")
+                    console.print("[green]✓ Successfully generated STRING protein interaction graphs[/green]")
                     success_count += 1
                 else:
-                    console.print(f"[red]✗ Failed to generate STRING protein interaction graphs[/red]")
+                    console.print("[red]✗ Failed to generate STRING protein interaction graphs[/red]")
 
             except Exception as e:
                 console.print(f"[red]✗ Error processing STRING data: {e}[/red]")

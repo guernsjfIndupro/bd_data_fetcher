@@ -4,13 +4,12 @@ import logging
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 import seaborn as sns
 
+from bd_data_fetcher.api.umap_client import UMapClient
 from bd_data_fetcher.data_handlers.utils import FileNames
 from bd_data_fetcher.graphs.base_graph import BaseGraph
-from bd_data_fetcher.api.umap_client import UMapClient
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +21,7 @@ class GeneExpressionGraph(BaseGraph):
     including normal expression, tumor-normal ratios, and expression distributions.
     Uses an anchor protein as a reference point for visualizations.
     """
-    
+
     # Cache for gene expression bounds to avoid repeated API calls
     _gene_expression_bounds_cache = None
 
@@ -94,21 +93,21 @@ class GeneExpressionGraph(BaseGraph):
 
             # Get expression columns (all columns except 'Gene')
             expression_columns = [col for col in df.columns if col != 'Gene']
-            
+
             if not expression_columns:
                 logger.error("No expression columns found in normal gene expression data")
                 return False
 
             # Define primary sites to filter out
             filtered_sites = ['Cells', 'Blood', 'Blood Vessel', 'Muscle', 'White blood cell']
-            
+
             # Filter out the specified primary sites
             filtered_columns = [col for col in expression_columns if col not in filtered_sites]
-            
+
             if not filtered_columns:
                 logger.error("No expression columns remaining after filtering")
                 return False
-            
+
             logger.info(f"Filtered out {len(expression_columns) - len(filtered_columns)} primary sites: {filtered_sites}")
             logger.info(f"Remaining primary sites: {filtered_columns}")
 
@@ -271,54 +270,54 @@ class GeneExpressionGraph(BaseGraph):
         """
         # Filter data for the two genes
         gene_data = data[data['Gene'].isin([anchor_gene, other_gene])].copy()
-        
+
         if gene_data.empty:
             return None, None, None, None, 0
-        
+
         # Get normal tissue data for both genes to calculate thresholds
         normal_anchor = gene_data.loc[
-            (gene_data['Gene'] == anchor_gene) & 
+            (gene_data['Gene'] == anchor_gene) &
             (gene_data['Is Cancer'] == False)
         ]
-        
+
         normal_other = gene_data.loc[
-            (gene_data['Gene'] == other_gene) & 
+            (gene_data['Gene'] == other_gene) &
             (gene_data['Is Cancer'] == False)
         ]
-        
+
         # Calculate median thresholds from normal tissue
         anchor_median = normal_anchor['Expression Value'].median()
         other_median = normal_other['Expression Value'].median()
-        
+
         # Get tumor data for both genes
         tumor_data = gene_data.loc[gene_data['Is Cancer'] == True]
-        
+
         if tumor_data.empty:
             return 0.0, anchor_median, other_median, pd.DataFrame(), 0
-        
+
         # Create a simple DataFrame with both genes' expression values for each sample
-        
+
         anchor_tumor = tumor_data[tumor_data['Gene'] == anchor_gene][['Sample Name', 'Expression Value']].copy()
         other_tumor = tumor_data[tumor_data['Gene'] == other_gene][['Sample Name', 'Expression Value']].copy()
-        
+
         # Rename columns to avoid conflicts
         anchor_tumor = anchor_tumor.rename(columns={'Expression Value': anchor_gene})
         other_tumor = other_tumor.rename(columns={'Expression Value': other_gene})
-        
+
         # Merge the data to get both genes' expression for each sample using Sample Name
         combined_tumor = pd.merge(anchor_tumor, other_tumor, on='Sample Name', how='inner')
 
         if combined_tumor.empty:
             return 0.0, anchor_median, other_median, combined_tumor, 0
-        
+
         # Calculate coexpression percentage
         coexpression_count = combined_tumor.loc[
-            (combined_tumor[anchor_gene] > anchor_median) & 
+            (combined_tumor[anchor_gene] > anchor_median) &
             (combined_tumor[other_gene] > other_median)
         ].shape[0]
-        
+
         coexpression_percentage = coexpression_count / combined_tumor.shape[0]
-        
+
         return coexpression_percentage, anchor_median, other_median, combined_tumor, combined_tumor.shape[0]
 
     def _generate_gene_coexpression_plots(self, output_dir: str) -> bool:
@@ -359,7 +358,7 @@ class GeneExpressionGraph(BaseGraph):
 
             # Ensure numeric column is properly formatted
             df['Expression Value'] = pd.to_numeric(df['Expression Value'], errors='coerce')
-            
+
             # Drop rows with missing required data
             drop_columns = ['Expression Value', 'Gene', 'Primary Site', 'Is Cancer']
             if has_sample_name:
@@ -374,7 +373,7 @@ class GeneExpressionGraph(BaseGraph):
             unique_genes = df['Gene'].unique()
             other_genes = [gene for gene in unique_genes if gene != self.anchor_protein]
             unique_primary_sites = df['Primary Site'].unique()
-            
+
             if len(other_genes) == 0:
                 logger.warning(f"No genes found other than anchor gene: {self.anchor_protein}")
                 return False
@@ -390,20 +389,20 @@ class GeneExpressionGraph(BaseGraph):
                 for other_gene in other_genes:
                     # Filter data for this primary site
                     site_data = df[df['Primary Site'] == primary_site].copy()
-                    
+
                     if site_data.empty:
                         logger.warning(f"No data found for primary site: {primary_site}")
                         continue
 
                     # Calculate coexpression for this site
                     coexpression_result = self._calculate_gene_coexpression(site_data, self.anchor_protein, other_gene)
-                    
+
                     if coexpression_result[0] is None:
                         logger.warning(f"No data available for {self.anchor_protein} vs {other_gene} in {primary_site}")
                         continue
-                    
+
                     coexpression, threshold_anchor, threshold_other, tumor_data, tumor_count = coexpression_result
-                    
+
                     if tumor_count == 0:
                         logger.warning(f"No tumor data available for {self.anchor_protein} vs {other_gene} in {primary_site}")
                         continue
@@ -413,7 +412,7 @@ class GeneExpressionGraph(BaseGraph):
                         (tumor_data[self.anchor_protein] > threshold_anchor) &
                         (tumor_data[other_gene] > threshold_other)
                     ]
-                    
+
                     low_coexpression = tumor_data.loc[
                         (tumor_data[self.anchor_protein] <= threshold_anchor) |
                         (tumor_data[other_gene] <= threshold_other)
@@ -421,7 +420,7 @@ class GeneExpressionGraph(BaseGraph):
 
                     # Create the plot
                     fig, ax = plt.subplots(figsize=(8, 6))
-                    
+
                     # Plot high coexpression samples with improved definition
                     if not high_coexpression.empty:
                         ax.scatter(
@@ -434,7 +433,7 @@ class GeneExpressionGraph(BaseGraph):
                             linewidth=0.5,
                             label=f'High Coexpression (n={len(high_coexpression)})'
                         )
-                    
+
                     # Plot low coexpression samples with improved definition
                     if not low_coexpression.empty:
                         ax.scatter(
@@ -462,12 +461,12 @@ class GeneExpressionGraph(BaseGraph):
                     ax.set_ylabel(f'{other_gene} Expression (Log2)', fontsize=12)
 
                     # Set title
-                    ax.set_title(f'{self.anchor_protein} and {other_gene} Coexpression\n{primary_site} Tumor Samples', 
+                    ax.set_title(f'{self.anchor_protein} and {other_gene} Coexpression\n{primary_site} Tumor Samples',
                                fontsize=14, fontweight='bold')
 
                     # Add coexpression statistics
                     ax.text(
-                        0.05, 0.95, 
+                        0.05, 0.95,
                         f'{int(coexpression * 100)}% of samples above threshold\n'
                         f'Total tumor samples: n={tumor_count}\n'
                         f'{self.anchor_protein} threshold: {threshold_anchor:.2f}\n'

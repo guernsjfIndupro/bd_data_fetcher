@@ -191,7 +191,7 @@ def data(
         )
 
         # Generate cell line sigmoidal curves
-        console.print(f"\n[bold]Generating cell line sigmoidal curves...[/bold]")
+        console.print("\n[bold]Generating cell line sigmoidal curves...[/bold]")
         wce_handler.build_cell_line_sigmoidal_curves_csv(all_cell_lines, output_dir)
 
         for i, (symbol, uniprotkb_ac) in enumerate(symbol_mappings.items(), 1):

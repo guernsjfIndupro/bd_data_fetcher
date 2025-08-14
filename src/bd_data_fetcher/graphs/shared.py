@@ -6,10 +6,10 @@ import numpy as np
 
 class TumorNormalColors:
     """Colors for tumor vs normal tissue."""
-    
+
     NORMAL = '#2ecc71'  # Green
     TUMOR = '#e74c3c'   # Red
-    
+
     @classmethod
     def get_palette(cls):
         """Get colors as list for seaborn/matplotlib."""
@@ -18,7 +18,7 @@ class TumorNormalColors:
 
 class OncLineageColors:
     """Colors for onc lineages."""
-    
+
     # Predefined colors for each OncLineageEnum value
     LINEAGE_COLORS = {
         'Lung': '#ff7f0e',                    # Orange
@@ -57,7 +57,7 @@ class OncLineageColors:
         'Myeloid': '#c49c94',                 # Light brown
         'Unknown': '#7f7f7f',                 # Gray
     }
-    
+
     @classmethod
     def get_color_map(cls, lineages):
         """Get color mapping for lineages using predefined colors."""
@@ -74,10 +74,10 @@ class OncLineageColors:
 
 class ProteinColors:
     """Colors for specific proteins."""
-    
+
     ANCHOR = '#e74c3c'    # Red for anchor protein
     TAPA = '#ff8c00'      # Distinct orange for TAPA protein
-    
+
     @classmethod
     def get_color(cls, protein_name, anchor_protein):
         """Get color for a specific protein.

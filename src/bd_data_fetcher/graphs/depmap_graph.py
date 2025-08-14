@@ -155,7 +155,7 @@ class DepMapGraph(BaseGraph):
 
                     # Create the scatter plot
                     plt.figure(figsize=(12, 10))
-                    
+
                     # Set light gray background
                     plt.gca().set_facecolor('#f8f9fa')
 
@@ -220,13 +220,13 @@ class DepMapGraph(BaseGraph):
                     # Save the plot with protein name in filename
                     safe_protein_name = protein.replace(' ', '_').replace('/', '_').replace('\\', '_')
                     filename = f"copy_number_scatter_plot_{safe_protein_name}.png"
-                    
+
                     # Create output directory and save
                     output_path = Path(output_dir) / "depmap" / filename
                     output_path.parent.mkdir(parents=True, exist_ok=True)
                     plt.savefig(output_path, dpi=300, bbox_inches='tight')
                     plt.close()
-                    
+
                     logger.info(f"Saved graph: {output_path}")
                     success_count += 1
                     logger.info(f"Successfully generated copy number scatter plot for protein: {protein}")

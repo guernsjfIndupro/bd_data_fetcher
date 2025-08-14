@@ -65,7 +65,7 @@ class BaseDataHandler:
             try:
                 existing_df = pd.read_csv(csv_path, low_memory=False)
                 return existing_df
-            except Exception as e:
+            except Exception:
                 # Create new file with specified columns
                 new_df = pd.DataFrame(columns=columns)
                 new_df.to_csv(csv_path, index=False)
@@ -121,15 +121,15 @@ class BaseDataHandler:
             existing_columns = list(existing_df.columns)
             new_columns = [col for col in data_df.columns if col not in existing_columns]
             all_columns = existing_columns + new_columns
-            
+
             # Reindex both DataFrames to have the same columns in the correct order
             existing_df = existing_df.reindex(columns=all_columns, fill_value=None)
             data_df = data_df.reindex(columns=all_columns, fill_value=None)
-            
+
             # Filter out empty/NA entries before concatenation to avoid FutureWarning
             existing_df_filtered = existing_df.dropna(how='all')
             data_df_filtered = data_df.dropna(how='all')
-            
+
             # Now concatenate
             combined_df = pd.concat([existing_df_filtered, data_df_filtered], ignore_index=True)
             combined_df.to_csv(csv_path, index=False)
@@ -149,7 +149,7 @@ class BaseDataHandler:
         """
         # Get the ordered list of CSV columns from the mapping
         csv_columns = list(column_mapping.keys())
-        
+
         transformed_data = []
         for _, row in data_df.iterrows():
             transformed_row = {}
@@ -177,7 +177,7 @@ class BaseDataHandler:
         if not result_df.empty:
             # Ensure columns are in the correct order
             result_df = result_df[csv_columns]
-        
+
         return result_df
 
     def _create_matrix_csv(

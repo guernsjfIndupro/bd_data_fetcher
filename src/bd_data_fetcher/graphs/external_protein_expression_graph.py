@@ -5,12 +5,11 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import seaborn as sns
 
+from bd_data_fetcher.api.umap_client import UMapClient
 from bd_data_fetcher.data_handlers.utils import FileNames
 from bd_data_fetcher.graphs.base_graph import BaseGraph
-from bd_data_fetcher.api.umap_client import UMapClient
 from bd_data_fetcher.graphs.shared import TumorNormalColors
 
 logger = logging.getLogger(__name__)
@@ -23,7 +22,7 @@ class ExternalProteinExpressionGraph(BaseGraph):
     including normal expression data and study-specific comparisons.
     Uses an anchor protein as a reference point for visualizations.
     """
-    
+
     # Cache for proteomics bounds to avoid repeated API calls
     _proteomics_bounds_cache = None
 
@@ -95,7 +94,7 @@ class ExternalProteinExpressionGraph(BaseGraph):
 
             # Get expression columns (all columns except 'Gene')
             expression_columns = [col for col in df.columns if col != 'Gene']
-            
+
             if not expression_columns:
                 logger.error("No expression columns found in normal proteomics data")
                 return False
@@ -106,11 +105,11 @@ class ExternalProteinExpressionGraph(BaseGraph):
 
             # Prepare data for heatmap and apply log10 transformation
             heatmap_data = df.set_index('Gene')[expression_columns]
-            
+
             # Apply log10 transformation to copies per cell values
             # Replace zeros and negative values with NaN to avoid log(0) and log(negative) issues
             heatmap_data_log10 = heatmap_data.copy()
-            
+
             heatmap_data_log10[heatmap_data_log10 <= 0] = np.nan
 
             heatmap_data_log10 = np.log10(heatmap_data_log10)
@@ -157,8 +156,8 @@ class ExternalProteinExpressionGraph(BaseGraph):
             plt.yticks(rotation=0, fontsize=12)
 
             # Add caveat about proteomics ruler method
-            plt.figtext(0.98, 0.02, 'All copy numbers calculated using the proteomics ruler method', 
-                       fontsize=12, ha='right', va='bottom', 
+            plt.figtext(0.98, 0.02, 'All copy numbers calculated using the proteomics ruler method',
+                       fontsize=12, ha='right', va='bottom',
                        bbox=dict(boxstyle='round,pad=0.3', facecolor='lightgray', alpha=0.8))
 
             plt.tight_layout()
@@ -207,7 +206,7 @@ class ExternalProteinExpressionGraph(BaseGraph):
 
             # Get expression columns (all columns except 'Gene')
             expression_columns = [col for col in df.columns if col != 'Gene']
-            
+
             if not expression_columns:
                 logger.error("No expression columns found in study-specific proteomics data")
                 return False
@@ -218,11 +217,11 @@ class ExternalProteinExpressionGraph(BaseGraph):
 
             # Prepare data for heatmap and apply log2 transformation for tumor/normal ratios
             heatmap_data = df.set_index('Gene')[expression_columns]
-            
+
             # Apply log2 transformation for tumor/normal ratios (study-specific data)
             # Handle negative values properly for log transformation
             heatmap_data_log2 = heatmap_data.copy()
-            
+
             # Handle zeros and negative values properly for log2 transformation
             # Only convert zeros to NaN, keep negative values for log2
             heatmap_data_log2[heatmap_data_log2 == 0] = np.nan
@@ -295,7 +294,7 @@ class ExternalProteinExpressionGraph(BaseGraph):
 
             # Get expression columns (all columns except 'Gene')
             expression_columns = [col for col in df.columns if col != 'Gene']
-            
+
             if not expression_columns:
                 logger.error("No expression columns found in study-specific data")
                 return False
@@ -374,10 +373,10 @@ class ExternalProteinExpressionGraph(BaseGraph):
             # Get unique indications and proteins
             unique_indications = df['Indication'].unique()
             unique_proteins = df['Protein'].unique()
-            
+
             # Filter out anchor protein to get other proteins
             other_proteins = [p for p in unique_proteins if p != self.anchor_protein]
-            
+
             if len(other_proteins) == 0:
                 logger.warning(f"No proteins found other than anchor protein: {self.anchor_protein}")
                 return False
@@ -393,7 +392,7 @@ class ExternalProteinExpressionGraph(BaseGraph):
                 for other_protein in other_proteins:
                     # Filter data for this indication
                     indication_data = df[df['Indication'] == indication].copy()
-                    
+
                     if indication_data.empty:
                         logger.warning(f"No data found for indication: {indication}")
                         continue
@@ -401,51 +400,51 @@ class ExternalProteinExpressionGraph(BaseGraph):
                     # Get data for both anchor protein and other protein in this indication
                     anchor_data = indication_data[indication_data['Protein'] == self.anchor_protein]
                     other_protein_data = indication_data[indication_data['Protein'] == other_protein]
-                    
+
                     # Separate tumor and normal data for both proteins
                     anchor_tumor = anchor_data[anchor_data['Tissue Type'] == 'Tumor']['Expression Value']
                     anchor_normal = anchor_data[anchor_data['Tissue Type'] == 'Normal']['Expression Value']
                     other_tumor = other_protein_data[other_protein_data['Tissue Type'] == 'Tumor']['Expression Value']
                     other_normal = other_protein_data[other_protein_data['Tissue Type'] == 'Normal']['Expression Value']
-                    
+
                     # Create boxplot data - always show Normal then Tumor for each protein
                     plot_data = []
                     labels = []
                     colors = []
-                    
+
                     # Anchor protein: Normal first, then Tumor
                     if len(anchor_normal) > 0:
                         plot_data.append(anchor_normal)
                         labels.append(f'{self.anchor_protein}\nNormal')
                         colors.append(TumorNormalColors.NORMAL)
-                    
+
                     if len(anchor_tumor) > 0:
                         plot_data.append(anchor_tumor)
                         labels.append(f'{self.anchor_protein}\nTumor')
                         colors.append(TumorNormalColors.TUMOR)
-                    
+
                     # Other protein: Normal first, then Tumor
                     if len(other_normal) > 0:
                         plot_data.append(other_normal)
                         labels.append(f'{other_protein}\nNormal')
                         colors.append(TumorNormalColors.NORMAL)
-                    
+
                     if len(other_tumor) > 0:
                         plot_data.append(other_tumor)
                         labels.append(f'{other_protein}\nTumor')
                         colors.append(TumorNormalColors.TUMOR)
-                    
+
                     if not plot_data:
                         logger.warning(f"No data available for {indication} - {self.anchor_protein} vs {other_protein}")
                         continue
-                    
+
                     # Create individual plot
                     fig, ax = plt.subplots(figsize=(10, 6))
-                    
+
                     # Create boxplot with individual points and grouped positioning
                     positions = []
                     current_pos = 1
-                    
+
                     # Group positions: Anchor protein (Normal, Tumor) then Other protein (Normal, Tumor)
                     # Add small gap between proteins
                     for i in range(len(plot_data)):
@@ -453,42 +452,42 @@ class ExternalProteinExpressionGraph(BaseGraph):
                             current_pos += 0.5  # Add gap between proteins
                         positions.append(current_pos)
                         current_pos += 1
-                    
-                    bp = ax.boxplot(plot_data, labels=labels, positions=positions, patch_artist=True, 
+
+                    bp = ax.boxplot(plot_data, labels=labels, positions=positions, patch_artist=True,
                                   boxprops=dict(facecolor='lightgrey', alpha=0.7),
                                   medianprops=dict(color='lightgray', linewidth=2),
                                   flierprops=dict(marker='o', markerfacecolor='red', markersize=4))
-                    
+
                     # Color the boxplots using light grey for all boxes
                     for patch in bp['boxes']:
                         patch.set_facecolor('lightgrey')
                         patch.set_alpha(0.7)
-                    
+
                     # Add individual data points with tumor/normal colors
-                    for i, (data, color, pos) in enumerate(zip(plot_data, colors, positions)):
+                    for i, (data, color, pos) in enumerate(zip(plot_data, colors, positions, strict=False)):
                         # Add jitter to x-coordinates for better visibility
                         jitter = np.random.normal(0, 0.05, len(data))
-                        ax.scatter(pos + jitter, data, alpha=0.6, s=20, 
+                        ax.scatter(pos + jitter, data, alpha=0.6, s=20,
                                  color=color, edgecolors='black', linewidth=0.5, zorder=10)
-                    
+
                     # Customize the plot
-                    ax.set_title(f'{indication}\n{self.anchor_protein} vs {other_protein}', 
+                    ax.set_title(f'{indication}\n{self.anchor_protein} vs {other_protein}',
                                fontsize=14, fontweight='bold')
                     ax.set_ylabel('Expression Value (Log2)', fontsize=12)
-                    
+
                     # Remove top and right spines
                     ax.spines['top'].set_visible(False)
                     ax.spines['right'].set_visible(False)
-                    
+
                     # Rotate x-axis labels to horizontal
                     ax.tick_params(axis='x', rotation=0)
-                    
+
                     # Update x-axis labels to include sample counts
                     new_labels = []
-                    for i, (label, data) in enumerate(zip(labels, plot_data)):
+                    for i, (label, data) in enumerate(zip(labels, plot_data, strict=False)):
                         count = len(data)
                         new_labels.append(f'{label}\n(n={count})')
-                    
+
                     ax.set_xticks(positions)
                     ax.set_xticklabels(new_labels)
 

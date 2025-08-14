@@ -165,7 +165,7 @@ class GeneExpressionDataHandler(BaseDataHandler):
 
         for primary_site in primary_sites:
             site_data = data_df[data_df['primary_site'] == primary_site]
-            
+
             # Separate tumor and normal data
             tumor_data = site_data[site_data['is_cancer'] == True]
             normal_data = site_data[site_data['is_cancer'] == False]

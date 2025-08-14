@@ -7,11 +7,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from scipy.interpolate import make_interp_spline
 
 from bd_data_fetcher.data_handlers.utils import FileNames
 from bd_data_fetcher.graphs.base_graph import BaseGraph
-from bd_data_fetcher.graphs.shared import ProteinColors, OncLineageColors
-from scipy.interpolate import make_interp_spline
+from bd_data_fetcher.graphs.shared import OncLineageColors, ProteinColors
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +96,7 @@ class InternalWCEGraph(BaseGraph):
 
             # Get unique proteins
             proteins = df['Gene'].unique()
-            
+
             if len(proteins) == 0:
                 logger.error("No proteins found in WCE data")
                 return False
@@ -108,13 +108,13 @@ class InternalWCEGraph(BaseGraph):
 
             # Get all unique cell lines and onc lineages for consistent plotting
             all_cell_lines = df[['Cell Line', 'Onc Lineage']].drop_duplicates().sort_values(['Onc Lineage', 'Cell Line'])
-            
+
             # Generate one plot per protein
             for protein in proteins:
                 try:
                     # Filter data for current protein
                     protein_df = df[df['Gene'] == protein]
-                    
+
                     # Calculate mean and standard error for each cell line
                     if not protein_df.empty:
                         protein_stats_df = protein_df.groupby(['Cell Line', 'Onc Lineage']).agg({
@@ -127,11 +127,11 @@ class InternalWCEGraph(BaseGraph):
                     # Create complete dataset with all cell lines
                     complete_df = all_cell_lines.copy()
                     complete_df = complete_df.merge(
-                        protein_stats_df, 
-                        on=['Cell Line', 'Onc Lineage'], 
+                        protein_stats_df,
+                        on=['Cell Line', 'Onc Lineage'],
                         how='left'
                     )
-                    
+
                     # Fill missing values with 0 or NaN (will show as empty bars)
                     complete_df['mean'] = complete_df['mean'].fillna(0)
                     complete_df['std'] = complete_df['std'].fillna(0)
@@ -164,11 +164,11 @@ class InternalWCEGraph(BaseGraph):
                     plt.ylabel('Weight Normalized Intensity Ranking', fontsize=14, fontweight='bold')
 
                     # Set x-axis labels with replicate counts
-                    labels_with_counts = [f"{cell_line}\n(n={int(count)})" for cell_line, count in zip(complete_df['Cell Line'], complete_df['count'])]
+                    labels_with_counts = [f"{cell_line}\n(n={int(count)})" for cell_line, count in zip(complete_df['Cell Line'], complete_df['count'], strict=False)]
                     plt.xticks(x_positions, labels_with_counts, rotation=45, ha='right')
 
                     # Add legend for onc lineages
-                    legend_elements = [plt.Rectangle((0,0),1,1, facecolor=color_map[lineage], alpha=0.8, edgecolor='black', linewidth=0.5, label=lineage) 
+                    legend_elements = [plt.Rectangle((0,0),1,1, facecolor=color_map[lineage], alpha=0.8, edgecolor='black', linewidth=0.5, label=lineage)
                                      for lineage in onc_lineages]
                     plt.legend(handles=legend_elements, title='Onc Lineage', loc='upper right', fontsize=10)
 
@@ -237,7 +237,7 @@ class InternalWCEGraph(BaseGraph):
 
             # Get point columns (all columns starting with 'Point_')
             point_columns = [col for col in curves_df.columns if col.startswith('Point_')]
-            
+
             if not point_columns:
                 logger.error("No point data found in sigmoidal curves")
                 return False
@@ -259,14 +259,14 @@ class InternalWCEGraph(BaseGraph):
                 try:
                     # Filter data for current cell line
                     cell_line_data = curves_df[curves_df['Cell_Line_Name'] == cell_line]
-                    
+
                     if cell_line_data.empty:
                         logger.warning(f"No data found for cell line: {cell_line}")
                         continue
 
                     # Get Y-axis data (Is_Y_Axis = 1)
                     y_data = cell_line_data[cell_line_data['Is_Y_Axis'] == 1]
-                    
+
                     if y_data.empty:
                         logger.warning(f"No Y-axis data found for cell line: {cell_line}")
                         continue
@@ -279,7 +279,7 @@ class InternalWCEGraph(BaseGraph):
                     plt.figure(figsize=(12, 8))
                     sns.set_style("white")
 
-                    # Apply smoothing to the curve using spline interpolation 
+                    # Apply smoothing to the curve using spline interpolation
                     # Create smooth curve
                     x_smooth = np.linspace(0, 1000, 1000)  # 1000 points for smoothness
                     spline = make_interp_spline(x_values, y_values, k=3)  # Cubic spline
@@ -292,23 +292,23 @@ class InternalWCEGraph(BaseGraph):
                     if wce_df is not None and 'Cell Line' in wce_df.columns and 'Gene' in wce_df.columns:
                         # Filter WCE data for this cell line
                         cell_line_wce = wce_df[wce_df['Cell Line'] == cell_line]
-                        
+
                         if not cell_line_wce.empty:
                             # Calculate average rank for each protein
                             protein_ranks = cell_line_wce.groupby('Gene')['Weight Normalized Intensity Ranking'].mean()
-                            
+
                             # Plot protein rank points
                             for protein, avg_rank in protein_ranks.items():
                                 # Find corresponding Y value for this rank
                                 rank_idx = int((avg_rank / 1000) * len(y_values))
                                 rank_idx = min(rank_idx, len(y_values) - 1)  # Ensure within bounds
                                 y_point = y_values[rank_idx]
-                                
+
                                 # Get color for this protein
                                 protein_color = ProteinColors.get_color(protein, self.anchor_protein)
-                                
+
                                 plt.scatter(avg_rank, y_point, color=protein_color, s=50, alpha=0.7, zorder=5)
-                                
+
                                 # Add protein symbol label
                                 plt.annotate(
                                     protein,

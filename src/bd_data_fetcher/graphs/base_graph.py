@@ -1,11 +1,9 @@
 """Base graph class for data visualization."""
 
 import logging
-import os
 from abc import ABC, abstractmethod
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -90,4 +88,3 @@ class BaseGraph(ABC):
         Returns:
             True if graphs were generated successfully, False otherwise
         """
-        pass

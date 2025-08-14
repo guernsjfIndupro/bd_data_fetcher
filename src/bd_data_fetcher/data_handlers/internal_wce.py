@@ -4,7 +4,7 @@ from collections import defaultdict
 import numpy as np
 import pandas as pd
 import structlog
-from scipy.interpolate import interp1d, splev, splrep
+from scipy.interpolate import interp1d
 
 from bd_data_fetcher.api.umap_models import CellLineProteomicsData
 from bd_data_fetcher.data_handlers.base_handler import BaseDataHandler
@@ -248,7 +248,7 @@ class WCEDataHandler(BaseDataHandler):
                 cell_line_data = self.umap_client._get_all_cell_line_proteomics_data(
                     cell_line_name=cell_line_name
                 )
-                
+
                 if not cell_line_data:
                     continue
 
@@ -259,7 +259,7 @@ class WCEDataHandler(BaseDataHandler):
                 # Create rows for X and Y axes with evenly spaced 1000 points between 0 and 1000
                 # Sample 1000 points evenly spaced between 0 and 1000
                 x_range = np.linspace(0, 1000, 1000)
-                
+
                 # Interpolate the curve values at these evenly spaced x points
                 if len(x_axis) > 0:
                     # Use numpy interpolation to get y values at the evenly spaced x points
@@ -267,7 +267,7 @@ class WCEDataHandler(BaseDataHandler):
                 else:
                     # Fallback if curve is empty
                     y_sampled = np.zeros(1000)
-                
+
                 x_row = [cell_line_name, 0] + list(x_range)
                 y_row = [cell_line_name, 1] + list(y_sampled)
 
@@ -277,5 +277,5 @@ class WCEDataHandler(BaseDataHandler):
                 # Append to CSV file
                 self._append_to_csv_file(folder_path, file_name, cell_line_df, columns)
 
-            except Exception as e:
+            except Exception:
                 continue
