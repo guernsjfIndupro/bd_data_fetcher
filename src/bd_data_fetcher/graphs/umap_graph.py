@@ -90,11 +90,22 @@ class UMapGraph(BaseGraph):
             # The P-value column already contains -log10(p-value) values
             df['-log10_pvalue'] = df['P-value']
 
-
+            # Get TAPA genes from normal gene expression data
+            tapa_genes = set()
+            try:
+                normal_gene_df = self.get_data_for_file(FileNames.NORMAL_GENE_EXPRESSION.value)
+                if normal_gene_df is not None and not normal_gene_df.empty and 'Gene' in normal_gene_df.columns:
+                    # Get unique genes from normal gene expression data, excluding the anchor protein
+                    tapa_genes = set(normal_gene_df['Gene'].unique()) - {self.anchor_protein}
+                    logger.info(f"Found {len(tapa_genes)} TAPA genes from normal gene expression data")
+                else:
+                    logger.warning("No normal gene expression data available, will highlight all non-anchor proteins as TAPA")
+            except Exception as e:
+                logger.warning(f"Error loading normal gene expression data: {e}, will highlight all non-anchor proteins as TAPA")
 
             # Get unique replicate set IDs
             replicate_set_ids = df['Replicate Set ID'].unique()
-
+            
             if len(replicate_set_ids) == 0:
                 logger.error("No replicate set IDs found in UMap data")
                 return False
@@ -109,7 +120,7 @@ class UMapGraph(BaseGraph):
                 try:
                     # Filter data for current replicate set
                     replicate_df = df[df['Replicate Set ID'] == replicate_set_id]
-
+                    
                     if replicate_df.empty:
                         logger.warning(f"No data found for replicate set ID: {replicate_set_id}")
                         continue
@@ -127,7 +138,7 @@ class UMapGraph(BaseGraph):
                     # Separate data by fold change threshold - gray out values below -0.5
                     low_fc_data = replicate_df[replicate_df['Log2 FC'] < 0.5]
                     high_fc_data = replicate_df[replicate_df['Log2 FC'] >= 0.5]
-
+                    
                     # Plot low fold change points (below -0.5) in grey
                     if not low_fc_data.empty:
                         plt.scatter(
@@ -137,7 +148,7 @@ class UMapGraph(BaseGraph):
                             color='grey',
                             s=20,
                         )
-
+                    
                     # Plot high fold change points (≥-0.5) in light blue
                     if not high_fc_data.empty:
                         plt.scatter(
@@ -173,30 +184,56 @@ class UMapGraph(BaseGraph):
                                 bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8)
                             )
 
-                    # Highlight all other proteins as TAPA proteins - always highlight regardless of fold change
-                    other_proteins_data = replicate_df[replicate_df['Protein Symbol'] != self.anchor_protein]
-                    if not other_proteins_data.empty:
-                        plt.scatter(
-                            other_proteins_data['Log2 FC'],
-                            other_proteins_data['-log10_pvalue'],
-                            alpha=0.8,
-                            color=ProteinColors.get_color('tapa', self.anchor_protein),
-                            s=100,
-                            label='TAPA Proteins',
-                            zorder=5
-                        )
-                        # Add text annotation for TAPA proteins
-                        for _, row in other_proteins_data.iterrows():
-                            plt.annotate(
-                                row['Protein Symbol'],
-                                xy=(row['Log2 FC'], row['-log10_pvalue']),
-                                xytext=(5, -15),
-                                textcoords='offset points',
-                                fontsize=10,
-                                fontweight='bold',
-                                color='black',
-                                bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8)
+                    # Highlight only TAPA genes from normal gene expression data
+                    if tapa_genes:
+                        tapa_data = replicate_df[replicate_df['Protein Symbol'].isin(tapa_genes)]
+                        if not tapa_data.empty:
+                            plt.scatter(
+                                tapa_data['Log2 FC'],
+                                tapa_data['-log10_pvalue'],
+                                alpha=0.8,
+                                color=ProteinColors.get_color('tapa', self.anchor_protein),
+                                s=100,
+                                label='TAPA Proteins',
+                                zorder=5
                             )
+                            # Add text annotation for TAPA proteins
+                            for _, row in tapa_data.iterrows():
+                                plt.annotate(
+                                    row['Protein Symbol'],
+                                    xy=(row['Log2 FC'], row['-log10_pvalue']),
+                                    xytext=(5, -15),
+                                    textcoords='offset points',
+                                    fontsize=10,
+                                    fontweight='bold',
+                                    color='black',
+                                    bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8)
+                                )
+                    else:
+                        # Fallback: highlight all other proteins as TAPA proteins if no normal gene expression data
+                        other_proteins_data = replicate_df[replicate_df['Protein Symbol'] != self.anchor_protein]
+                        if not other_proteins_data.empty:
+                            plt.scatter(
+                                other_proteins_data['Log2 FC'],
+                                other_proteins_data['-log10_pvalue'],
+                                alpha=0.8,
+                                color=ProteinColors.get_color('tapa', self.anchor_protein),
+                                s=100,
+                                label='TAPA Proteins',
+                                zorder=5
+                            )
+                            # Add text annotation for TAPA proteins
+                            for _, row in other_proteins_data.iterrows():
+                                plt.annotate(
+                                    row['Protein Symbol'],
+                                    xy=(row['Log2 FC'], row['-log10_pvalue']),
+                                    xytext=(5, -15),
+                                    textcoords='offset points',
+                                    fontsize=10,
+                                    fontweight='bold',
+                                    color='black',
+                                    bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8)
+                                )
 
 
 
