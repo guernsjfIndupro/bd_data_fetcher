@@ -7,7 +7,7 @@ from weasyprint import HTML, CSS
 # Configure Panel
 pn.extension('bootstrap')
 
-def create_umap_row(image_paths, vertical_text, current_dir=None):
+def create_umap_row(image_paths, vertical_text, current_dir=None, show_headers=False):
     """
     Create a reusable Panel layout row with vertical text and three images in a light blue band.
     
@@ -15,9 +15,10 @@ def create_umap_row(image_paths, vertical_text, current_dir=None):
         image_paths (list): List of 3 image file paths
         vertical_text (str): Text to display vertically
         current_dir (Path, optional): Directory containing images. If None, uses current file's directory.
+        show_headers (bool): Whether to show header labels above images
     
     Returns:
-        pn.Row: Panel row with the layout
+        pn.Column: Panel column with the layout
     """
     if current_dir is None:
         current_dir = Path(__file__).parent
@@ -42,7 +43,7 @@ def create_umap_row(image_paths, vertical_text, current_dir=None):
             align-items: center; 
             justify-content: center;
             padding: 10px;
-            background-color: rgba(255, 255, 255, 0.3);
+            background-color: #e3f2fd;
             border-radius: 6px;
             margin-right: 15px;
         ">
@@ -54,6 +55,29 @@ def create_umap_row(image_paths, vertical_text, current_dir=None):
         sizing_mode="fixed",
         styles={'display': 'flex', 'align-items': 'center'}
     )
+    
+    # Create header labels if requested
+    if show_headers:
+        header_1 = pn.pane.Markdown("**Ir**", width=250, height=30, sizing_mode="fixed", styles={'text-align': 'center', 'margin': '0'})
+        header_2 = pn.pane.Markdown("**RFT**", width=250, height=30, sizing_mode="fixed", styles={'text-align': 'center', 'margin': '0'})
+        header_3 = pn.pane.Markdown("**WCE**", width=250, height=30, sizing_mode="fixed", styles={'text-align': 'center', 'margin': '0'})
+        
+        # Create header row
+        header_row = pn.Row(
+            pn.pane.HTML('<div style="width: 55px;"></div>', width=55, height=30, sizing_mode="fixed"),  # Spacer for vertical text
+            header_1,
+            header_2,
+            header_3,
+            sizing_mode="fixed",
+            width=870,
+            height=30,
+            styles={
+                'gap': '8px', 
+                'justify-content': 'center', 
+                'align-items': 'center', 
+                'display': 'flex'
+            }
+        )
     
     # Create the images row with tighter spacing for PDF
     images_row = pn.Row(
@@ -71,7 +95,7 @@ def create_umap_row(image_paths, vertical_text, current_dir=None):
         }
     )
     
-    # Create the main layout in a single light blue band optimized for PDF
+    # Create the main layout without the light blue container
     main_layout = pn.Row(
         vertical_text_pane,
         images_row,
@@ -83,16 +107,22 @@ def create_umap_row(image_paths, vertical_text, current_dir=None):
             'align-items': 'center', 
             'justify-content': 'center',
             'padding': '15px',
-            'background-color': '#e3f2fd',  # Light blue color
-            'border-radius': '8px',
-            'box-shadow': '0 2px 4px rgba(0,0,0,0.1)',
-            'border': '1px solid #bbdefb',
             'display': 'flex',
             'flex-direction': 'row'
         }
     )
     
-    return main_layout
+    # Return with or without headers
+    if show_headers:
+        return pn.Column(
+            header_row,
+            main_layout,
+            sizing_mode="fixed",
+            width=870,
+            styles={'gap': '0px'}
+        )
+    else:
+        return main_layout
 
 def create_umap_layout():
     """
@@ -123,11 +153,12 @@ def create_umap_layout():
     
     # Create rows
     rows = []
-    for data in row_data:
+    for i, data in enumerate(row_data):
         row = create_umap_row(
             image_paths=data['image_paths'],
             vertical_text=data['vertical_text'],
-            current_dir=current_dir
+            current_dir=current_dir,
+            show_headers=(i == 0)  # Show headers only for the first row
         )
         rows.append(row)
     
@@ -206,20 +237,7 @@ def create_full_report():
     
     # Create a complete report
     report = pn.Column(
-        pn.pane.Markdown(
-            "# UMAP Analysis Report", 
-            styles={'text-align': 'center', 'color': '#2c3e50', 'margin-bottom': '30px'}
-        ),
-        pn.pane.Markdown(
-            "**Analysis Date:** " + str(Path().cwd().name),
-            styles={'text-align': 'center', 'color': '#7f8c8d', 'margin-bottom': '20px'}
-        ),
         layout,
-        pn.pane.Markdown("---"),
-        pn.pane.Markdown(
-            "*Generated using Panel and WeasyPrint*",
-            styles={'text-align': 'center', 'color': '#95a5a6', 'font-style': 'italic'}
-        ),
         sizing_mode="stretch_width",
         styles={'padding': '20px'}
     )
