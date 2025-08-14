@@ -172,18 +172,120 @@ def create_umap_layout():
     
     return main_layout
 
+
 def export_to_pdf_weasyprint(layout, output_path="umap_report.pdf"):
     """
-    Export the Panel layout to PDF using weasyprint.
+    Export the Panel layout to PDF using weasyprint with proper implementation.
     """
     try:
+        print("=== WEASYPRINT PDF EXPORT ===")
+        
         # Save as HTML first
         html_path = "umap_report.html"
+        print(f"1. Saving Panel layout to HTML: {html_path}")
         layout.save(html_path)
         
+        # Check if HTML file was created and has content
+        if not os.path.exists(html_path):
+            print("❌ ERROR: HTML file was not created")
+            return None
+            
+        with open(html_path, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+            print(f"2. HTML file size: {len(html_content)} characters")
+            
+            if len(html_content) < 100:
+                print("❌ WARNING: HTML file seems too small")
+                print(f"HTML content: {html_content[:500]}...")
+                return None
+            
+            print("✅ HTML file looks valid")
+        
+        # Create a proper HTML document for WeasyPrint
+        print("3. Creating enhanced HTML for WeasyPrint...")
+        
+        # Extract the body content from Panel's HTML
+        # Panel saves HTML that needs to be embedded in a proper document
+        enhanced_html = f"""
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>UMAP Analysis Report</title>
+            <style>
+                @page {{
+                    size: A4;
+                    margin: 0.5in;
+                }}
+                body {{
+                    font-family: Arial, sans-serif;
+                    margin: 0;
+                    padding: 20px;
+                    background-color: white;
+                    line-height: 1.4;
+                }}
+                /* Panel-specific styles */
+                .bk-root {{
+                    font-family: Arial, sans-serif !important;
+                }}
+                .bk-panel-models-layout-Column, .bk-panel-models-layout-Row {{
+                    display: flex !important;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                }}
+                .bk-panel-models-layout-Row {{
+                    flex-direction: row !important;
+                }}
+                .bk-panel-models-layout-Column {{
+                    flex-direction: column !important;
+                }}
+                /* Image handling */
+                img {{
+                    max-width: 100% !important;
+                    height: auto !important;
+                    display: block !important;
+                }}
+                .bk-pane-png {{
+                    display: block !important;
+                }}
+                /* Vertical text */
+                .vertical-text {{
+                    writing-mode: vertical-rl !important;
+                    text-orientation: mixed !important;
+                    transform: rotate(180deg) !important;
+                }}
+                /* Ensure all Panel elements are visible */
+                .bk {{
+                    display: block !important;
+                }}
+                /* Force proper sizing */
+                .bk-panel-models-layout-Column, .bk-panel-models-layout-Row {{
+                    width: auto !important;
+                    height: auto !important;
+                }}
+            </style>
+        </head>
+        <body>
+            {html_content}
+        </body>
+        </html>
+        """
+        
+        # Save the enhanced HTML
+        enhanced_html_path = "umap_report_enhanced.html"
+        with open(enhanced_html_path, 'w', encoding='utf-8') as f:
+            f.write(enhanced_html)
+        print(f"4. Enhanced HTML saved: {enhanced_html_path}")
+        
         # Convert HTML to PDF using weasyprint
-        html_doc = HTML(filename=html_path)
-        css = CSS(string='''
+        print("5. Converting to PDF with WeasyPrint...")
+        
+        # Use HTML from string instead of filename for better control
+        html_doc = HTML(string=enhanced_html)
+        
+        # Create CSS for PDF - minimal and focused
+        pdf_css = CSS(string='''
             @page {
                 size: A4;
                 margin: 0.5in;
@@ -191,11 +293,11 @@ def export_to_pdf_weasyprint(layout, output_path="umap_report.pdf"):
             body {
                 font-family: Arial, sans-serif;
                 margin: 0;
-                padding: 0;
+                padding: 20px;
                 background-color: white;
             }
             .bk-root {
-                font-family: Arial, sans-serif;
+                font-family: Arial, sans-serif !important;
             }
             .bk-panel-models-layout-Column, .bk-panel-models-layout-Row {
                 display: flex !important;
@@ -207,10 +309,9 @@ def export_to_pdf_weasyprint(layout, output_path="umap_report.pdf"):
                 flex-direction: column !important;
             }
             img {
-                max-width: 100%;
-                height: auto;
+                max-width: 100% !important;
+                height: auto !important;
             }
-            /* Ensure vertical text renders properly */
             .vertical-text {
                 writing-mode: vertical-rl !important;
                 text-orientation: mixed !important;
@@ -218,15 +319,38 @@ def export_to_pdf_weasyprint(layout, output_path="umap_report.pdf"):
             }
         ''')
         
-        html_doc.write_pdf(output_path, stylesheets=[css])
+        print("6. Writing PDF...")
+        html_doc.write_pdf(output_path, stylesheets=[pdf_css])
         
-        print(f"PDF successfully created: {output_path}")
-        return output_path
+        # Check if PDF was created
+        if os.path.exists(output_path):
+            pdf_size = os.path.getsize(output_path)
+            print(f"✅ PDF successfully created: {output_path} (size: {pdf_size} bytes)")
+            
+            if pdf_size < 1000:
+                print("⚠️  WARNING: PDF file seems too small, may be empty")
+                # Check if it's a valid PDF
+                try:
+                    with open(output_path, 'rb') as f:
+                        pdf_content = f.read(100)
+                        if b'%PDF' not in pdf_content:
+                            print("❌ ERROR: File is not a valid PDF")
+                            return None
+                        else:
+                            print("✅ File is a valid PDF")
+                except Exception as e:
+                    print(f"❌ Error checking PDF: {e}")
+            
+            return output_path
+        else:
+            print("❌ ERROR: PDF file was not created")
+            return None
         
     except Exception as e:
-        print(f"Error exporting to PDF: {e}")
-        print("Falling back to HTML export...")
-        return html_path
+        print(f"❌ Error exporting to PDF with WeasyPrint: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 def create_full_report():
     """
@@ -253,9 +377,17 @@ def main():
     
     # Show the app
     report.show()
-    
-    # Export to PDF
+
+
+    print("Attempting PDF export with enhanced WeasyPrint...")
     pdf_path = export_to_pdf_weasyprint(report)
+    
+    if pdf_path and pdf_path.endswith('.pdf'):
+        print(f"✅ PDF successfully created: {pdf_path}")
+    elif pdf_path and pdf_path.endswith('.html'):
+        print(f"⚠️  PDF export failed, HTML saved: {pdf_path}")
+    else:
+        print("❌ PDF export completely failed")
     
     return report, pdf_path
 
