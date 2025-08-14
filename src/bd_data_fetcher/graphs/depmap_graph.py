@@ -10,6 +10,7 @@ import seaborn as sns
 
 from bd_data_fetcher.data_handlers.utils import FileNames
 from bd_data_fetcher.graphs.base_graph import BaseGraph
+from bd_data_fetcher.graphs.shared import OncLineageColors
 
 logger = logging.getLogger(__name__)
 
@@ -125,7 +126,7 @@ class DepMapGraph(BaseGraph):
             logger.info(f"Found {len(common_proteins)} common proteins to process")
 
             # Set Seaborn style for professional medical appearance
-            sns.set_style("whitegrid")
+            sns.set_style("white")
             sns.set_palette(["#45cfe0"])
 
             success_count = 0
@@ -154,11 +155,13 @@ class DepMapGraph(BaseGraph):
 
                     # Create the scatter plot
                     plt.figure(figsize=(12, 10))
+                    
+                    # Set light gray background
+                    plt.gca().set_facecolor('#f8f9fa')
 
-                    # Get unique onc lineages for color mapping
+                    # Get unique onc lineages for color mapping using shared colors
                     onc_lineages = merged_df['Onc Lineage'].unique()
-                    colors = plt.cm.Set3(np.linspace(0, 1, len(onc_lineages)))
-                    color_map = dict(zip(onc_lineages, colors, strict=False))
+                    color_map = OncLineageColors.get_color_map(onc_lineages)
 
                     # Create scatter plot colored by onc lineage
                     for lineage in onc_lineages:
@@ -202,8 +205,7 @@ class DepMapGraph(BaseGraph):
                     plt.xlabel('DepMap TPM Log2', fontsize=14, fontweight='bold')
                     plt.ylabel('Log2 Copy Number (WCE)', fontsize=14, fontweight='bold')
 
-                    # Add grid
-                    plt.grid(True, alpha=0.3)
+
 
                     # Add legend
                     plt.legend(title='Onc Lineage', loc='upper left', fontsize=10)

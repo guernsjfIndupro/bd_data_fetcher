@@ -10,6 +10,7 @@ import seaborn as sns
 
 from bd_data_fetcher.data_handlers.utils import FileNames
 from bd_data_fetcher.graphs.base_graph import BaseGraph
+from bd_data_fetcher.api.umap_client import UMapClient
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,9 @@ class ExternalProteinExpressionGraph(BaseGraph):
     including normal expression data and study-specific comparisons.
     Uses an anchor protein as a reference point for visualizations.
     """
+    
+    # Cache for proteomics bounds to avoid repeated API calls
+    _proteomics_bounds_cache = None
 
     def generate_graphs(self, output_dir: str) -> bool:
         """Generate all relevant graphs for external protein expression data.
@@ -132,7 +136,25 @@ class ExternalProteinExpressionGraph(BaseGraph):
             heatmap_data_log10[heatmap_data_log10 <= 0] = np.nan
             heatmap_data_log10 = np.log10(heatmap_data_log10)
 
-            # Create heatmap with masked zeros
+            # Get bounds from UMAP API (cached)
+            if ExternalProteinExpressionGraph._proteomics_bounds_cache is None:
+                try:
+                    umap_client = UMapClient()
+                    ExternalProteinExpressionGraph._proteomics_bounds_cache = umap_client._get_proteomics_normal_expression_data_bounds()
+                    logger.info(f"Cached proteomics bounds: {ExternalProteinExpressionGraph._proteomics_bounds_cache}")
+                except Exception as e:
+                    logger.warning(f"Failed to get proteomics bounds from API: {e}")
+                    ExternalProteinExpressionGraph._proteomics_bounds_cache = {}
+
+            # Get min and max values for heatmap limits
+            vmin = None
+            vmax = None
+            if ExternalProteinExpressionGraph._proteomics_bounds_cache:
+                vmin = ExternalProteinExpressionGraph._proteomics_bounds_cache.get('min')
+                vmax = ExternalProteinExpressionGraph._proteomics_bounds_cache.get('max')
+                logger.info(f"Using heatmap limits: vmin={vmin}, vmax={vmax}")
+
+            # Create heatmap with masked zeros and forced limits
             sns.heatmap(
                 heatmap_data_log10,
                 annot=False,
@@ -141,21 +163,23 @@ class ExternalProteinExpressionGraph(BaseGraph):
                 linewidths=0.2,
                 linecolor='white',
                 square=True,
-                mask=heatmap_data_log10.isna()  # Mask NaN values (original zeros)
+                mask=heatmap_data_log10.isna(),  # Mask NaN values (original zeros)
+                vmin=vmin,
+                vmax=vmax
             )
 
             # Customize the plot
-            plt.title('Normal Proteomics Log10(Copies per Cell) Data', fontsize=16, fontweight='bold', pad=25)
-            plt.xlabel('Indications/Tissue Types', fontsize=14, fontweight='bold')
-            plt.ylabel('Proteins', fontsize=14, fontweight='bold')
+            plt.title('Normal Proteomics Log10(Copies per Cell) Data', fontsize=20, fontweight='bold', pad=30)
+            plt.xlabel('Indications/Tissue Types', fontsize=16, fontweight='bold')
+            plt.ylabel('Proteins', fontsize=16, fontweight='bold')
 
             # Rotate x-axis labels for better readability
-            plt.xticks(rotation=45, ha='right')
-            plt.yticks(rotation=0)
+            plt.xticks(rotation=45, ha='right', fontsize=12)
+            plt.yticks(rotation=0, fontsize=12)
 
             # Add caveat about proteomics ruler method
             plt.figtext(0.98, 0.02, 'All copy numbers calculated using the proteomics ruler method', 
-                       fontsize=10, ha='right', va='bottom', 
+                       fontsize=12, ha='right', va='bottom', 
                        bbox=dict(boxstyle='round,pad=0.3', facecolor='lightgray', alpha=0.8))
 
             plt.tight_layout()
