@@ -9,50 +9,46 @@ pn.extension('bootstrap')
 
 def create_umap_layout():
     """
-    Create a Panel layout with vertical line, "Cell Line" text, and three images in a row.
+    Create a Panel layout with vertical "Cell Line" text and three images in a single light blue band.
     """
     # Get the current directory where the images are located
     current_dir = Path(__file__).parent
     
     # Define image paths
-    umap_1_path = current_dir / "umap_volcano_plot_replicate_set_951.png"
+    umap_1_path = current_dir / "umap_volcano_plot_replicate_set_966.png"
     umap_2_path = current_dir / "umap_volcano_plot_replicate_set_957.png"
-    sigmoidal_path = current_dir / "sigmoidal_curve_BxPC-3.png"
+    sigmoidal_path = current_dir / "sigmoidal_curve_Calu-1.png"
     
     # Create image widgets with better sizing
     umap_1_img = pn.pane.PNG(str(umap_1_path), width=280, height=220)
     umap_2_img = pn.pane.PNG(str(umap_2_path), width=280, height=220)
     sigmoidal_img = pn.pane.PNG(str(sigmoidal_path), width=280, height=220)
     
-    # Create the vertical line using CSS
-    vertical_line = pn.pane.HTML(
-        '<div style="width: 4px; height: 120px; background-color: #2c3e50; margin-right: 15px; border-radius: 2px;"></div>',
-        width=24,
-        height=120
-    )
-    
-    # Create "Cell Line" text with better styling
-    cell_line_text = pn.pane.Markdown(
-        "**Cell Line**",
-        width=120,
-        height=120,
-        styles={
-            'font-size': '20px', 
-            'font-weight': 'bold', 
-            'color': '#2c3e50',
-            'display': 'flex', 
-            'align-items': 'center',
-            'margin-left': '10px'
-        }
-    )
-    
-    # Create the left section with vertical line and text
-    left_section = pn.Column(
-        vertical_line,
-        cell_line_text,
-        width=160,
-        height=120,
-        styles={'display': 'flex', 'flex-direction': 'row', 'align-items': 'center'}
+    # Create vertical "Cell Line" text using HTML with CSS transform
+    vertical_text = pn.pane.HTML(
+        '''
+        <div class="vertical-text" style="
+            writing-mode: vertical-rl; 
+            text-orientation: mixed; 
+            transform: rotate(180deg);
+            font-size: 24px; 
+            font-weight: bold; 
+            color: #2c3e50; 
+            height: 220px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            margin-right: 20px;
+        ">
+            Cell Line
+        </div>
+        ''',
+        width=60,
+        height=220,
+        styles={'display': 'flex', 'align-items': 'center'}
     )
     
     # Create the images row with better spacing
@@ -62,22 +58,33 @@ def create_umap_layout():
         sigmoidal_img,
         width=900,
         height=220,
-        styles={'gap': '25px', 'justify-content': 'flex-start', 'align-items': 'center'}
-    )
-    
-    # Create the main layout
-    main_layout = pn.Row(
-        left_section,
-        images_row,
-        width=1080,
-        height=220,
         styles={
             'gap': '25px', 
+            'justify-content': 'center', 
             'align-items': 'center', 
-            'padding': '25px',
-            'background-color': '#f8f9fa',
-            'border-radius': '8px',
-            'box-shadow': '0 2px 4px rgba(0,0,0,0.1)'
+            'flex': '1',
+            'display': 'flex'
+        }
+    )
+    
+    # Create the main layout in a single light blue band
+    main_layout = pn.Row(
+        vertical_text,
+        images_row,
+        width=1100,
+        height=240,
+        styles={
+            'gap': '20px', 
+            'align-items': 'center', 
+            'justify-content': 'center',
+            'padding': '20px',
+            'background-color': '#e3f2fd',  # Light blue color
+            'border-radius': '12px',
+            'box-shadow': '0 4px 8px rgba(0,0,0,0.1)',
+            'border': '1px solid #bbdefb',
+            'display': 'flex',
+            'flex-direction': 'row',
+            'min-height': '240px'
         }
     )
     
@@ -97,15 +104,35 @@ def export_to_pdf_weasyprint(layout, output_path="umap_report.pdf"):
         css = CSS(string='''
             @page {
                 size: A4;
-                margin: 1in;
+                margin: 0.5in;
             }
             body {
                 font-family: Arial, sans-serif;
                 margin: 0;
-                padding: 20px;
+                padding: 0;
+                background-color: white;
             }
             .bk-root {
                 font-family: Arial, sans-serif;
+            }
+            .bk-panel-models-layout-Column, .bk-panel-models-layout-Row {
+                display: flex !important;
+            }
+            .bk-panel-models-layout-Row {
+                flex-direction: row !important;
+            }
+            .bk-panel-models-layout-Column {
+                flex-direction: column !important;
+            }
+            img {
+                max-width: 100%;
+                height: auto;
+            }
+            /* Ensure vertical text renders properly */
+            .vertical-text {
+                writing-mode: vertical-rl !important;
+                text-orientation: mixed !important;
+                transform: rotate(180deg) !important;
             }
         ''')
         

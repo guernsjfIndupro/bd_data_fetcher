@@ -322,9 +322,10 @@ class InternalWCEGraph(BaseGraph):
                                 )
 
                     # Customize the plot
-                    plt.title(f'Sigmoidal Curve - {cell_line}', fontsize=16, fontweight='bold', pad=25)
-                    plt.xlabel('Standardized Rankings (0-1000)', fontsize=14, fontweight='bold')
-                    plt.ylabel('Log10 Normalized Intensity', fontsize=14, fontweight='bold')
+                    # Remove title and axis labels as requested
+                    # plt.title(f'Sigmoidal Curve - {cell_line}', fontsize=16, fontweight='bold', pad=25)
+                    # plt.xlabel('Standardized Rankings (0-1000)', fontsize=14, fontweight='bold')
+                    # plt.ylabel('Log10 Normalized Intensity', fontsize=14, fontweight='bold')
 
                     # Remove top and right borders
                     ax = plt.gca()

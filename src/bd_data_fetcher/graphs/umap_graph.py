@@ -238,15 +238,16 @@ class UMapGraph(BaseGraph):
 
 
                     # Customize the plot
-                    plt.title(f'UMap Analysis Results - Volcano Plot\nReplicate Set {replicate_set_id}\nCell Line: {cell_line} | Chemistry: {chemistry} | Target: {target_protein}',
-                             fontsize=16, fontweight='bold', pad=25)
-                    plt.xlabel('Log2 Fold Change', fontsize=14, fontweight='bold')
-                    plt.ylabel('-log10(p-value)', fontsize=14, fontweight='bold')
+                    # Remove title and axis labels as requested
+                    # plt.title(f'UMap Analysis Results - Volcano Plot\nReplicate Set {replicate_set_id}\nCell Line: {cell_line} | Chemistry: {chemistry} | Target: {target_protein}',
+                    #          fontsize=16, fontweight='bold', pad=25)
+                    # plt.xlabel('Log2 Fold Change', fontsize=14, fontweight='bold')
+                    # plt.ylabel('-log10(p-value)', fontsize=14, fontweight='bold')
 
 
 
-                    # Add legend
-                    plt.legend(loc='upper right', fontsize=10)
+                    # Add legend - moved to top left as requested
+                    plt.legend(loc='upper left', fontsize=10)
 
                     # Remove top and right borders
                     ax = plt.gca()
