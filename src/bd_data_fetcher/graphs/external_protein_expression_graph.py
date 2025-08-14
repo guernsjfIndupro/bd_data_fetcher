@@ -111,30 +111,8 @@ class ExternalProteinExpressionGraph(BaseGraph):
             # Replace zeros and negative values with NaN to avoid log(0) and log(negative) issues
             heatmap_data_log10 = heatmap_data.copy()
             
-            # QC: Count and log invalid values before conversion
-            zero_count = (heatmap_data_log10 == 0).sum().sum()
-            negative_count = (heatmap_data_log10 < 0).sum().sum()
-            null_count = heatmap_data_log10.isna().sum().sum()
-            total_values = heatmap_data_log10.size
-            
-            if zero_count > 0 or negative_count > 0 or null_count > 0:
-                logger.info(f"QC: Found {zero_count} zeros, {negative_count} negative values, and {null_count} null values out of {total_values} total values")
-                logger.info(f"QC: Invalid values represent {((zero_count + negative_count + null_count) / total_values * 100):.2f}% of the data")
-                
-                # Log specific columns with issues if there are many
-                if zero_count > 0:
-                    zero_cols = heatmap_data_log10.columns[heatmap_data_log10.eq(0).any()].tolist()
-                    logger.info(f"QC: Columns with zeros: {zero_cols}")
-                
-                if negative_count > 0:
-                    neg_cols = heatmap_data_log10.columns[heatmap_data_log10.lt(0).any()].tolist()
-                    logger.info(f"QC: Columns with negative values: {neg_cols}")
-                
-                if null_count > 0:
-                    null_cols = heatmap_data_log10.columns[heatmap_data_log10.isna().any()].tolist()
-                    logger.info(f"QC: Columns with null values: {null_cols}")
-            
             heatmap_data_log10[heatmap_data_log10 <= 0] = np.nan
+
             heatmap_data_log10 = np.log10(heatmap_data_log10)
 
             # Get bounds from UMAP API (cached)
@@ -245,41 +223,15 @@ class ExternalProteinExpressionGraph(BaseGraph):
             # Handle negative values properly for log transformation
             heatmap_data_log2 = heatmap_data.copy()
             
-            # QC: Count and log invalid values before conversion
-            zero_count = (heatmap_data_log2 == 0).sum().sum()
-            negative_count = (heatmap_data_log2 < 0).sum().sum()
-            null_count = heatmap_data_log2.isna().sum().sum()
-            total_values = heatmap_data_log2.size
-            
-            if zero_count > 0 or negative_count > 0 or null_count > 0:
-                logger.info(f"QC: Found {zero_count} zeros, {negative_count} negative values, and {null_count} null values out of {total_values} total values")
-                logger.info(f"QC: Invalid values represent {((zero_count + negative_count + null_count) / total_values * 100):.2f}% of the data")
-                
-                # Log specific columns with issues if there are many
-                if zero_count > 0:
-                    zero_cols = heatmap_data_log2.columns[heatmap_data_log2.eq(0).any()].tolist()
-                    logger.info(f"QC: Columns with zeros: {zero_cols}")
-                
-                if negative_count > 0:
-                    neg_cols = heatmap_data_log2.columns[heatmap_data_log2.lt(0).any()].tolist()
-                    logger.info(f"QC: Columns with negative values: {neg_cols}")
-                
-                if null_count > 0:
-                    null_cols = heatmap_data_log2.columns[heatmap_data_log2.isna().any()].tolist()
-                    logger.info(f"QC: Columns with null values: {null_cols}")
-            
             # Handle zeros and negative values properly for log2 transformation
             # Only convert zeros to NaN, keep negative values for log2
             heatmap_data_log2[heatmap_data_log2 == 0] = np.nan
-            
-            # Apply log2 transformation (can handle negative values)
-            heatmap_data_log2 = np.log2(heatmap_data_log2)
 
             # Create heatmap with masked zeros and diverging colormap for tumor/normal ratios
             sns.heatmap(
                 heatmap_data_log2,
                 annot=False,
-                cmap='RdBu_r',  # Red-Blue diverging colormap for tumor/normal ratios
+                cmap='RdBu',  # Red-Blue diverging colormap for tumor/normal ratios
                 center=0,  # Center at 0 for log2 ratios
                 cbar_kws={'label': 'Log2(Tumor/Normal Ratio)'},
                 linewidths=0.2,
@@ -360,7 +312,7 @@ class ExternalProteinExpressionGraph(BaseGraph):
                 heatmap_data,
                 annot=True,
                 fmt='.2f',
-                cmap='RdBu_r',
+                cmap='Blues',
                 center=0,
                 cbar_kws={'label': 'Tumor-Normal Ratio'},
                 square=False
@@ -503,13 +455,13 @@ class ExternalProteinExpressionGraph(BaseGraph):
                         current_pos += 1
                     
                     bp = ax.boxplot(plot_data, labels=labels, positions=positions, patch_artist=True, 
-                                  boxprops=dict(facecolor='lightblue', alpha=0.7),
+                                  boxprops=dict(facecolor='lightgrey', alpha=0.7),
                                   medianprops=dict(color='lightgray', linewidth=2),
                                   flierprops=dict(marker='o', markerfacecolor='red', markersize=4))
                     
-                    # Color the boxplots using tumor/normal colors
-                    for patch, color in zip(bp['boxes'], colors):
-                        patch.set_facecolor(color)
+                    # Color the boxplots using light grey for all boxes
+                    for patch in bp['boxes']:
+                        patch.set_facecolor('lightgrey')
                         patch.set_alpha(0.7)
                     
                     # Add individual data points with tumor/normal colors

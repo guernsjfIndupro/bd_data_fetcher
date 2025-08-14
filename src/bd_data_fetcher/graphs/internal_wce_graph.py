@@ -11,6 +11,7 @@ import seaborn as sns
 from bd_data_fetcher.data_handlers.utils import FileNames
 from bd_data_fetcher.graphs.base_graph import BaseGraph
 from bd_data_fetcher.graphs.shared import ProteinColors, OncLineageColors
+from scipy.interpolate import make_interp_spline
 
 logger = logging.getLogger(__name__)
 
@@ -278,9 +279,7 @@ class InternalWCEGraph(BaseGraph):
                     plt.figure(figsize=(12, 8))
                     sns.set_style("white")
 
-                    # Apply smoothing to the curve using spline interpolation
-                    from scipy.interpolate import make_interp_spline
-                    
+                    # Apply smoothing to the curve using spline interpolation 
                     # Create smooth curve
                     x_smooth = np.linspace(0, 1000, 1000)  # 1000 points for smoothness
                     spline = make_interp_spline(x_values, y_values, k=3)  # Cubic spline
@@ -306,7 +305,7 @@ class InternalWCEGraph(BaseGraph):
                                 y_point = y_values[rank_idx]
                                 
                                 # Get color for this protein
-                                protein_color = ProteinColors.get_color(protein)
+                                protein_color = ProteinColors.get_color(protein, self.anchor_protein)
                                 
                                 plt.scatter(avg_rank, y_point, color=protein_color, s=50, alpha=0.7, zorder=5)
                                 
@@ -319,7 +318,7 @@ class InternalWCEGraph(BaseGraph):
                                     fontsize=8,
                                     ha='center',
                                     va='top',
-                                    color=protein_color
+                                    color='black'
                                 )
 
                     # Customize the plot

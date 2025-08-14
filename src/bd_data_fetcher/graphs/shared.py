@@ -79,12 +79,20 @@ class ProteinColors:
     TAPA = '#ff8c00'      # Distinct orange for TAPA protein
     
     @classmethod
-    def get_color(cls, protein_name):
-        """Get color for a specific protein."""
-        if protein_name.lower() == 'tapa':
-            return cls.TAPA
+    def get_color(cls, protein_name, anchor_protein):
+        """Get color for a specific protein.
+        
+        Args:
+            protein_name: Name of the protein to get color for
+            anchor_protein: Name of the anchor protein (if None, defaults to 'tapa' logic)
+        
+        Returns:
+            Color for the protein (ANCHOR for anchor protein, TAPA for all others)
+        """
+        if protein_name == anchor_protein:
+            return cls.ANCHOR
         else:
-            return cls.ANCHOR  # Default to anchor color for other proteins
+            return cls.TAPA
 
 
 
