@@ -7,85 +7,136 @@ from weasyprint import HTML, CSS
 # Configure Panel
 pn.extension('bootstrap')
 
-def create_umap_layout():
+def create_umap_row(image_paths, vertical_text, current_dir=None):
     """
-    Create a Panel layout with vertical "Cell Line" text and three images in a single light blue band.
+    Create a reusable Panel layout row with vertical text and three images in a light blue band.
+    
+    Args:
+        image_paths (list): List of 3 image file paths
+        vertical_text (str): Text to display vertically
+        current_dir (Path, optional): Directory containing images. If None, uses current file's directory.
+    
+    Returns:
+        pn.Row: Panel row with the layout
     """
-    # Get the current directory where the images are located
-    current_dir = Path(__file__).parent
+    if current_dir is None:
+        current_dir = Path(__file__).parent
     
-    # Define image paths
-    umap_1_path = current_dir / "umap_volcano_plot_replicate_set_966.png"
-    umap_2_path = current_dir / "umap_volcano_plot_replicate_set_957.png"
-    sigmoidal_path = current_dir / "sigmoidal_curve_Calu-1.png"
+    # Create image widgets optimized for PDF - larger sizes for better visibility
+    umap_1_img = pn.pane.PNG(str(current_dir / image_paths[0]), width=250, height=200, sizing_mode="fixed", fixed_aspect=False)
+    umap_2_img = pn.pane.PNG(str(current_dir / image_paths[1]), width=250, height=200, sizing_mode="fixed", fixed_aspect=False)
+    sigmoidal_img = pn.pane.PNG(str(current_dir / image_paths[2]), width=250, height=200, sizing_mode="fixed", fixed_aspect=False)
     
-    # Create image widgets with better sizing
-    umap_1_img = pn.pane.PNG(str(umap_1_path), width=280, height=220)
-    umap_2_img = pn.pane.PNG(str(umap_2_path), width=280, height=220)
-    sigmoidal_img = pn.pane.PNG(str(sigmoidal_path), width=280, height=220)
-    
-    # Create vertical "Cell Line" text using HTML with CSS transform
-    vertical_text = pn.pane.HTML(
-        '''
+    # Create vertical text using HTML with CSS transform
+    vertical_text_pane = pn.pane.HTML(
+        f'''
         <div class="vertical-text" style="
             writing-mode: vertical-rl; 
             text-orientation: mixed; 
             transform: rotate(180deg);
-            font-size: 24px; 
+            font-size: 22px; 
             font-weight: bold; 
             color: #2c3e50; 
-            height: 220px; 
+            height: 200px; 
             display: flex; 
             align-items: center; 
             justify-content: center;
             padding: 10px;
             background-color: rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            margin-right: 20px;
+            border-radius: 6px;
+            margin-right: 15px;
         ">
-            Cell Line
+            {vertical_text}
         </div>
         ''',
-        width=60,
-        height=220,
+        width=55,
+        height=200,
+        sizing_mode="fixed",
         styles={'display': 'flex', 'align-items': 'center'}
     )
     
-    # Create the images row with better spacing
+    # Create the images row with tighter spacing for PDF
     images_row = pn.Row(
         umap_1_img,
         umap_2_img,
         sigmoidal_img,
-        width=900,
-        height=220,
+        sizing_mode="fixed",
+        width=800,
+        height=200,
         styles={
-            'gap': '25px', 
+            'gap': '8px', 
             'justify-content': 'center', 
             'align-items': 'center', 
-            'flex': '1',
             'display': 'flex'
         }
     )
     
-    # Create the main layout in a single light blue band
+    # Create the main layout in a single light blue band optimized for PDF
     main_layout = pn.Row(
-        vertical_text,
+        vertical_text_pane,
         images_row,
-        width=1100,
-        height=240,
+        sizing_mode="fixed",
+        width=870,
+        height=220,
         styles={
-            'gap': '20px', 
+            'gap': '15px', 
             'align-items': 'center', 
             'justify-content': 'center',
-            'padding': '20px',
+            'padding': '15px',
             'background-color': '#e3f2fd',  # Light blue color
-            'border-radius': '12px',
-            'box-shadow': '0 4px 8px rgba(0,0,0,0.1)',
+            'border-radius': '8px',
+            'box-shadow': '0 2px 4px rgba(0,0,0,0.1)',
             'border': '1px solid #bbdefb',
             'display': 'flex',
-            'flex-direction': 'row',
-            'min-height': '240px'
+            'flex-direction': 'row'
         }
+    )
+    
+    return main_layout
+
+def create_umap_layout():
+    """
+    Create a Panel layout with multiple rows of vertical text and three images.
+    """
+    # Get the current directory where the images are located
+    current_dir = Path(__file__).parent
+    
+    # Define the data for each row - using same images for both rows
+    row_data = [
+        {
+            'image_paths': [
+                "umap_volcano_plot_replicate_set_966.png",
+                "umap_volcano_plot_replicate_set_957.png", 
+                "sigmoidal_curve_Calu-1.png"
+            ],
+            'vertical_text': "Cell Line 1"
+        },
+        {
+            'image_paths': [
+                "umap_volcano_plot_replicate_set_966.png",
+                "umap_volcano_plot_replicate_set_957.png", 
+                "sigmoidal_curve_Calu-1.png"
+            ],
+            'vertical_text': "Cell Line 2"
+        }
+    ]
+    
+    # Create rows
+    rows = []
+    for data in row_data:
+        row = create_umap_row(
+            image_paths=data['image_paths'],
+            vertical_text=data['vertical_text'],
+            current_dir=current_dir
+        )
+        rows.append(row)
+    
+    # Combine all rows with spacing optimized for PDF
+    main_layout = pn.Column(
+        *rows,
+        sizing_mode="fixed",
+        width=870,
+        styles={'gap': '20px'}
     )
     
     return main_layout
@@ -169,7 +220,7 @@ def create_full_report():
             "*Generated using Panel and WeasyPrint*",
             styles={'text-align': 'center', 'color': '#95a5a6', 'font-style': 'italic'}
         ),
-        width=1200,
+        sizing_mode="stretch_width",
         styles={'padding': '20px'}
     )
     
