@@ -10,6 +10,7 @@ import seaborn as sns
 
 from bd_data_fetcher.data_handlers.utils import FileNames
 from bd_data_fetcher.graphs.base_graph import BaseGraph
+from bd_data_fetcher.graphs.shared import ProteinColors, OncLineageColors
 
 logger = logging.getLogger(__name__)
 
@@ -113,41 +114,47 @@ class InternalWCEGraph(BaseGraph):
                     # Filter data for current protein
                     protein_df = df[df['Gene'] == protein]
                     
-                    # Average data across the same cell line
+                    # Calculate mean and standard error for each cell line
                     if not protein_df.empty:
-                        protein_avg_df = protein_df.groupby(['Cell Line', 'Onc Lineage'])['Weight Normalized Intensity Ranking'].mean().reset_index()
+                        protein_stats_df = protein_df.groupby(['Cell Line', 'Onc Lineage']).agg({
+                            'Weight Normalized Intensity Ranking': ['mean', 'std', 'count']
+                        }).reset_index()
+                        protein_stats_df.columns = ['Cell Line', 'Onc Lineage', 'mean', 'std', 'count']
                     else:
-                        protein_avg_df = pd.DataFrame(columns=['Cell Line', 'Onc Lineage', 'Weight Normalized Intensity Ranking'])
+                        protein_stats_df = pd.DataFrame(columns=['Cell Line', 'Onc Lineage', 'mean', 'std', 'count'])
 
                     # Create complete dataset with all cell lines
                     complete_df = all_cell_lines.copy()
                     complete_df = complete_df.merge(
-                        protein_avg_df, 
+                        protein_stats_df, 
                         on=['Cell Line', 'Onc Lineage'], 
                         how='left'
                     )
                     
                     # Fill missing values with 0 or NaN (will show as empty bars)
-                    complete_df['Weight Normalized Intensity Ranking'] = complete_df['Weight Normalized Intensity Ranking'].fillna(0)
+                    complete_df['mean'] = complete_df['mean'].fillna(0)
+                    complete_df['std'] = complete_df['std'].fillna(0)
+                    complete_df['count'] = complete_df['count'].fillna(0)
 
-                    # Get unique onc lineages for color mapping
+                    # Get unique onc lineages for color mapping using shared colors
                     onc_lineages = complete_df['Onc Lineage'].unique()
-                    colors = plt.cm.Set3(np.linspace(0, 1, len(onc_lineages)))
-                    color_map = dict(zip(onc_lineages, colors))
+                    color_map = OncLineageColors.get_color_map(onc_lineages)
 
                     # Set up the plot
                     plt.figure(figsize=(max(12, len(complete_df) * 0.4), 8))
-                    sns.set_style("whitegrid")
+                    sns.set_style("white")
 
-                    # Create bar plot
+                    # Create bar plot with error bars
                     x_positions = range(len(complete_df))
                     bars = plt.bar(
                         x_positions,
-                        complete_df['Weight Normalized Intensity Ranking'],
+                        complete_df['mean'],
                         color=[color_map[lineage] for lineage in complete_df['Onc Lineage']],
                         alpha=0.8,
                         edgecolor='black',
-                        linewidth=0.5
+                        linewidth=0.5,
+                        yerr=complete_df['std'],
+                        capsize=3
                     )
 
                     # Customize the plot
@@ -155,8 +162,9 @@ class InternalWCEGraph(BaseGraph):
                     plt.xlabel('Cell Lines', fontsize=14, fontweight='bold')
                     plt.ylabel('Weight Normalized Intensity Ranking', fontsize=14, fontweight='bold')
 
-                    # Set x-axis labels
-                    plt.xticks(x_positions, complete_df['Cell Line'], rotation=45, ha='right')
+                    # Set x-axis labels with replicate counts
+                    labels_with_counts = [f"{cell_line}\n(n={int(count)})" for cell_line, count in zip(complete_df['Cell Line'], complete_df['count'])]
+                    plt.xticks(x_positions, labels_with_counts, rotation=45, ha='right')
 
                     # Add legend for onc lineages
                     legend_elements = [plt.Rectangle((0,0),1,1, facecolor=color_map[lineage], alpha=0.8, edgecolor='black', linewidth=0.5, label=lineage) 
@@ -268,7 +276,7 @@ class InternalWCEGraph(BaseGraph):
 
                     # Set up the plot
                     plt.figure(figsize=(12, 8))
-                    sns.set_style("whitegrid")
+                    sns.set_style("white")
 
                     # Apply smoothing to the curve using spline interpolation
                     from scipy.interpolate import make_interp_spline
@@ -297,7 +305,10 @@ class InternalWCEGraph(BaseGraph):
                                 rank_idx = min(rank_idx, len(y_values) - 1)  # Ensure within bounds
                                 y_point = y_values[rank_idx]
                                 
-                                plt.scatter(avg_rank, y_point, color='#e74c3c', s=50, alpha=0.7, zorder=5)
+                                # Get color for this protein
+                                protein_color = ProteinColors.get_color(protein)
+                                
+                                plt.scatter(avg_rank, y_point, color=protein_color, s=50, alpha=0.7, zorder=5)
                                 
                                 # Add protein symbol label
                                 plt.annotate(
@@ -308,7 +319,7 @@ class InternalWCEGraph(BaseGraph):
                                     fontsize=8,
                                     ha='center',
                                     va='top',
-                                    color='black'
+                                    color=protein_color
                                 )
 
                     # Customize the plot

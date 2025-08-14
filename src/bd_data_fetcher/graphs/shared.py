@@ -72,6 +72,21 @@ class OncLineageColors:
         return color_map
 
 
+class ProteinColors:
+    """Colors for specific proteins."""
+    
+    ANCHOR = '#e74c3c'    # Red for anchor protein
+    TAPA = '#ff8c00'      # Distinct orange for TAPA protein
+    
+    @classmethod
+    def get_color(cls, protein_name):
+        """Get color for a specific protein."""
+        if protein_name.lower() == 'tapa':
+            return cls.TAPA
+        else:
+            return cls.ANCHOR  # Default to anchor color for other proteins
+
+
 
 
 

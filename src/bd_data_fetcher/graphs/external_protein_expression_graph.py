@@ -151,8 +151,8 @@ class ExternalProteinExpressionGraph(BaseGraph):
             vmin = None
             vmax = None
             if ExternalProteinExpressionGraph._proteomics_bounds_cache:
-                vmin = ExternalProteinExpressionGraph._proteomics_bounds_cache.get('min')
-                vmax = ExternalProteinExpressionGraph._proteomics_bounds_cache.get('max')
+                vmin = ExternalProteinExpressionGraph._proteomics_bounds_cache.get('min_copies_per_cell')
+                vmax = ExternalProteinExpressionGraph._proteomics_bounds_cache.get('max_copies_per_cell')
                 logger.info(f"Using heatmap limits: vmin={vmin}, vmax={vmax}")
 
             # Create heatmap with masked zeros and forced limits

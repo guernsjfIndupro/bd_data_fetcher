@@ -10,6 +10,7 @@ import seaborn as sns
 
 from bd_data_fetcher.data_handlers.utils import FileNames
 from bd_data_fetcher.graphs.base_graph import BaseGraph
+from bd_data_fetcher.api.umap_client import UMapClient
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,9 @@ class GeneExpressionGraph(BaseGraph):
     including normal expression, tumor-normal ratios, and expression distributions.
     Uses an anchor protein as a reference point for visualizations.
     """
+    
+    # Cache for gene expression bounds to avoid repeated API calls
+    _gene_expression_bounds_cache = None
 
     def generate_graphs(self, output_dir: str) -> bool:
         """Generate all relevant graphs for gene expression data.
@@ -95,14 +99,49 @@ class GeneExpressionGraph(BaseGraph):
                 logger.error("No expression columns found in normal gene expression data")
                 return False
 
+            # Define primary sites to filter out
+            filtered_sites = ['Cells', 'Blood', 'Blood Vessel', 'Muscle', 'White blood cell']
+            
+            # Filter out the specified primary sites
+            filtered_columns = [col for col in expression_columns if col not in filtered_sites]
+            
+            if not filtered_columns:
+                logger.error("No expression columns remaining after filtering")
+                return False
+            
+            logger.info(f"Filtered out {len(expression_columns) - len(filtered_columns)} primary sites: {filtered_sites}")
+            logger.info(f"Remaining primary sites: {filtered_columns}")
+
             # Set up the plot
-            plt.figure(figsize=(max(12, len(expression_columns) * 0.8), max(8, len(df) * 0.3)))
+            plt.figure(figsize=(max(12, len(filtered_columns) * 0.8), max(8, len(df) * 0.3)))
             sns.set_style("whitegrid")
 
-            # Prepare data for heatmap
-            heatmap_data = df.set_index('Gene')[expression_columns]
+            # Prepare data for heatmap with filtered columns
+            heatmap_data = df.set_index('Gene')[filtered_columns]
 
-            # Create heatmap
+            # Get bounds from UMAP API (cached)
+            if GeneExpressionGraph._gene_expression_bounds_cache is None:
+                try:
+                    umap_client = UMapClient()
+                    # Get all primary sites for the studies parameter
+                    studies = filtered_columns  # Use filtered columns as studies
+                    GeneExpressionGraph._gene_expression_bounds_cache = umap_client._get_gtex_normal_rna_expression_data_bounds(
+                        studies=studies, is_cancer=False
+                    )
+                    logger.info(f"Cached gene expression bounds: {GeneExpressionGraph._gene_expression_bounds_cache}")
+                except Exception as e:
+                    logger.warning(f"Failed to get gene expression bounds from API: {e}")
+                    GeneExpressionGraph._gene_expression_bounds_cache = {}
+
+            # Get min and max values for heatmap limits
+            vmin = None
+            vmax = None
+            if GeneExpressionGraph._gene_expression_bounds_cache:
+                vmin = GeneExpressionGraph._gene_expression_bounds_cache.get('min_bound')
+                vmax = GeneExpressionGraph._gene_expression_bounds_cache.get('max_bound')
+                logger.info(f"Using heatmap limits: vmin={vmin}, vmax={vmax}")
+
+            # Create heatmap with bounds
             sns.heatmap(
                 heatmap_data,
                 annot=False,
@@ -110,7 +149,9 @@ class GeneExpressionGraph(BaseGraph):
                 cbar_kws={'label': 'Expression Value'},
                 linewidths=0.2,
                 linecolor='white',
-                square=True
+                square=True,
+                vmin=vmin,
+                vmax=vmax
             )
 
             # Customize the plot
@@ -381,25 +422,29 @@ class GeneExpressionGraph(BaseGraph):
                     # Create the plot
                     fig, ax = plt.subplots(figsize=(8, 6))
                     
-                    # Plot high coexpression samples
+                    # Plot high coexpression samples with improved definition
                     if not high_coexpression.empty:
                         ax.scatter(
                             high_coexpression[self.anchor_protein],
                             high_coexpression[other_gene],
                             color='cornflowerblue',
-                            alpha=0.9,
-                            s=50,
+                            alpha=0.7,
+                            s=40,
+                            edgecolors='darkblue',
+                            linewidth=0.5,
                             label=f'High Coexpression (n={len(high_coexpression)})'
                         )
                     
-                    # Plot low coexpression samples
+                    # Plot low coexpression samples with improved definition
                     if not low_coexpression.empty:
                         ax.scatter(
                             low_coexpression[self.anchor_protein],
                             low_coexpression[other_gene],
                             color='gray',
-                            alpha=0.9,
-                            s=50,
+                            alpha=0.7,
+                            s=40,
+                            edgecolors='darkgray',
+                            linewidth=0.5,
                             label=f'Low Coexpression (n={len(low_coexpression)})'
                         )
 
