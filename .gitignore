@@ -179,5 +179,6 @@ logs/
 *.png
 
 # Mac stuff
-*.DS_Store
+.DS_Store
+*DS_Store
 !human_string_protein_scores.csv
