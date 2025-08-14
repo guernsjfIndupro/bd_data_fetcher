@@ -144,7 +144,7 @@ class ExternalProteinExpressionGraph(BaseGraph):
                 square=True,
                 mask=heatmap_data_log10.isna(),  # Mask NaN values (original zeros)
                 vmin=vmin,
-                vmax=vmax
+                vmax=np.log10(vmax)
             )
 
             # Customize the plot

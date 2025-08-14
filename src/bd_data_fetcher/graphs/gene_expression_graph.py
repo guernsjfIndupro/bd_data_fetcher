@@ -124,7 +124,7 @@ class GeneExpressionGraph(BaseGraph):
                 try:
                     umap_client = UMapClient()
                     # Get all primary sites for the studies parameter
-                    studies = filtered_columns  # Use filtered columns as studies
+                    studies = ["TCGA"]  # Use filtered columns as studies
                     GeneExpressionGraph._gene_expression_bounds_cache = umap_client._get_gtex_normal_rna_expression_data_bounds(
                         studies=studies, is_cancer=False
                     )
@@ -139,14 +139,14 @@ class GeneExpressionGraph(BaseGraph):
             if GeneExpressionGraph._gene_expression_bounds_cache:
                 vmin = GeneExpressionGraph._gene_expression_bounds_cache.get('min_bound')
                 vmax = GeneExpressionGraph._gene_expression_bounds_cache.get('max_bound')
-                logger.info(f"Using heatmap limits: vmin={vmin}, vmax={vmax}")
+                print(f"Using heatmap limits: vmin={vmin}, vmax={vmax}")
 
             # Create heatmap with bounds
             sns.heatmap(
                 heatmap_data,
                 annot=False,
                 cmap='Blues',
-                cbar_kws={'label': 'Expression Value'},
+                cbar_kws={'label': 'Log2 Expression Value'},
                 linewidths=0.2,
                 linecolor='white',
                 square=True,
