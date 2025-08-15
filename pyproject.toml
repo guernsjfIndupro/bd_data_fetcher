@@ -38,6 +38,7 @@ dependencies = [
     "cairocffi>=0.9.0",
     "cffi>=1.15.0",
     "playwright>=1.40.0",
+    "adjustText>=0.8",
 ]
 
 [project.optional-dependencies]

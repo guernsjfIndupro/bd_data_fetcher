@@ -73,7 +73,9 @@ class PanelPDFExporter:
             print(f"2. HTML file size: {len(html_content)} characters")
 
             # Create enhanced HTML with proper styling for PDF
-            enhanced_html = self._create_enhanced_html(html_content, title)
+            # Convert relative image paths to absolute paths
+            current_dir = os.path.dirname(os.path.abspath(temp_html_path))
+            enhanced_html = self._create_enhanced_html(html_content, title, current_dir)
 
             # Save enhanced HTML
             enhanced_html_path = f"{output_path}_enhanced.html"
@@ -99,8 +101,16 @@ class PanelPDFExporter:
                     print("5. Loading HTML content...")
                     await page.set_content(enhanced_html)
 
-                    # Wait for content to load
+                    # Wait for content to load and images to render
                     await page.wait_for_load_state('networkidle')
+                    
+                    # Additional wait for images to load
+                    try:
+                        await page.wait_for_selector('img', timeout=10000)
+                        print("6a. Images found, waiting for them to load...")
+                        await page.wait_for_timeout(2000)  # Wait 2 seconds for images
+                    except Exception as e:
+                        print(f"6a. Warning: {e}")
 
                     # Generate PDF
                     print("6. Generating PDF...")
@@ -144,18 +154,29 @@ class PanelPDFExporter:
             traceback.print_exc()
             return None
 
-    def _create_enhanced_html(self, html_content: str, title: str | None = None) -> str:
+    def _create_enhanced_html(self, html_content: str, title: str | None = None, base_path: str | None = None) -> str:
         """
         Create enhanced HTML with proper styling for PDF generation.
         
         Args:
             html_content: Original Panel HTML content
             title: Optional title for the document
+            base_path: Base path for converting relative image paths to absolute
             
         Returns:
             Enhanced HTML string with PDF-specific styling
         """
         doc_title = title or "Panel Layout Report"
+        
+        # Convert relative image paths to absolute paths if base_path is provided
+        if base_path:
+            import re
+            # Replace relative image paths with absolute paths
+            html_content = re.sub(
+                r'src="([^"]*\.png)"',
+                lambda m: f'src="file://{os.path.join(base_path, m.group(1))}"',
+                html_content
+            )
 
         return f"""
         <!DOCTYPE html>
@@ -210,11 +231,31 @@ class PanelPDFExporter:
                 .bk {{
                     display: block !important;
                 }}
-                /* Force proper sizing */
+                /* Preserve fixed sizing for layout elements */
                 .bk-panel-models-layout-Column, .bk-panel-models-layout-Row {{
-                    width: auto !important;
-                    height: auto !important;
+                    /* Don't override fixed sizing - let Panel handle it */
                 }}
+                
+                /* Page break controls for PDF */
+                .bk-panel-models-layout-Column {{
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                    margin-bottom: 20px !important;
+                }}
+                
+                /* Force page breaks between major sections */
+                .bk-panel-models-layout-Column:nth-child(3n) {{
+                    page-break-before: auto !important;
+                    break-before: auto !important;
+                }}
+                
+                /* Ensure proper spacing between rows */
+                .bk-panel-models-layout-Row {{
+                    margin-bottom: 15px !important;
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                }}
+                
                 /* Print-specific styles */
                 @media print {{
                     body {{
@@ -223,6 +264,18 @@ class PanelPDFExporter:
                     }}
                     .vertical-text {{
                         background-color: #e3f2fd !important;
+                    }}
+                    
+                    /* Additional print controls */
+                    .bk-panel-models-layout-Column {{
+                        page-break-inside: avoid !important;
+                        break-inside: avoid !important;
+                    }}
+                    
+                    /* Force page breaks every 2 rows */
+                    .bk-panel-models-layout-Column:nth-child(3n) {{
+                        page-break-before: auto !important;
+                        break-before: auto !important;
                     }}
                 }}
             </style>

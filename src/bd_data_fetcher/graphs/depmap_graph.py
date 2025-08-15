@@ -25,7 +25,38 @@ class DepMapGraph(BaseGraph):
     Uses an anchor protein as a reference point for visualizations.
     """
 
-    @lru_cache(maxsize=128)
+    def _add_labels_with_adjusttext(self, ax, points, labels, fontsize=12):
+        """
+        Add labels using adjustText library for optimal positioning in DepMap plots.
+        
+        Args:
+            ax: Matplotlib axis object
+            points: List of (x, y) coordinates for points
+            labels: List of label texts
+            fontsize: Font size for labels
+        """
+        from adjustText import adjust_text
+        
+        texts = []
+        for (x, y), label in zip(points, labels):
+            # Create text directly under the point by default
+            text = ax.text(x, y-0.5, label, fontsize=fontsize, ha='center', va='top', 
+                          color='black', weight='bold')
+            texts.append(text)
+        
+        # Use adjustText to optimize label positions - only adjust if poor overlap
+        adjust_text(
+            texts,
+            arrowprops=dict(arrowstyle='-', color='black', alpha=0.8, lw=0.5),
+            expand_points=(1.2, 1.2),
+            force_points=(0.1, 0.1),
+            force_text=(0.5, 0.5),
+            min_arrow_len=3,
+            avoid_points=False,  # Don't avoid data points, only avoid text overlaps
+            avoid_self=False,    # Don't avoid the point the label belongs to
+            only_move={'points': 'xy', 'text': 'xy'}  # Allow both points and text to move
+        )
+
     def _get_depmap_bounds_for_protein(self, uniprotkb_ac: str) -> dict[str, float]:
         """
         Get DepMap bounds for a specific protein, using LRU caching to avoid repeated API calls.
@@ -203,23 +234,18 @@ class DepMapGraph(BaseGraph):
                             label=lineage
                         )
 
-                    # Add cell line labels for better identification
+                    # Collect points and labels for smart positioning
+                    points = []
+                    labels = []
+                    
                     for _, row in merged_df.iterrows():
-                        plt.annotate(
-                            row['Cell Line'],
-                            xy=(row['TPM Log2'], row['Log2_Copy_Number']),
-                            xytext=(5, 5),
-                            textcoords='offset points',
-                            fontsize=8,
-                            fontweight='bold',
-                            color='#2a9bb3',
-                            bbox={
-                                "boxstyle": 'round,pad=0.3',
-                                "facecolor": 'white',
-                                "edgecolor": '#45cfe0',
-                                "alpha": 0.8
-                            }
-                        )
+                        points.append((row['TPM Log2'], row['Log2_Copy_Number']))
+                        labels.append(row['Cell Line'])
+                    
+                    # Add labels using adjustText for optimal positioning
+                    if points:
+                        ax = plt.gca()
+                        self._add_labels_with_adjusttext(ax, points, labels, fontsize=10)
 
                     # Customize the plot
                     plt.title(

@@ -189,19 +189,31 @@ class StringGraph(BaseGraph):
                                  node_size=1000,  # Increased from 500 (2x larger)
                                  alpha=0.8)
 
-            # Draw edges with thickness based on combined_score
+                        # Draw edges with thickness based on combined_score confidence levels
             edges = list(G.edges(data=True))
             edge_widths = []
-
+            edge_colors = []
+            
             for u, v, d in edges:
                 combined_score = d.get('combined_score', 0)
-                # Normalize combined_score to width (400-1000 range to 1-8 width range)
-                width = max(1, min(8, (combined_score - 400) / 75 + 1))
+                
+                # Categorize edges by confidence level
+                if combined_score >= 701:  # High confidence
+                    width = 6
+                    color = '#2E86AB'  # Blue
+                elif combined_score >= 400:  # Medium confidence
+                    width = 3
+                    color = '#7FB3D3'  # Light blue
+                else:  # Low confidence (shouldn't happen due to threshold)
+                    width = 1
+                    color = '#B8D4E3'  # Very light blue
+                
                 edge_widths.append(width)
+                edge_colors.append(color)
 
-            # Draw all edges with varying thickness and single color
+            # Draw all edges with varying thickness and colors based on confidence
             nx.draw_networkx_edges(G, pos, edgelist=edges,
-                                 edge_color=self.edge_color,
+                                 edge_color=edge_colors,
                                  width=edge_widths,
                                  alpha=0.7)
 
@@ -212,22 +224,20 @@ class StringGraph(BaseGraph):
             plt.title(f'Protein-Protein Interaction Network\n{self.anchor_protein} and Related Proteins',
                      fontsize=16, fontweight='bold', pad=20)
 
-            # Add legend for edge thickness
+                        # Add legend for edge confidence levels
             legend_elements = [
-                plt.Line2D([0], [0], color=self.edge_color,
-                          linewidth=1, label='Weak Interaction (400-500)'),
-                plt.Line2D([0], [0], color=self.edge_color,
-                          linewidth=4, label='Medium Interaction (500-750)'),
-                plt.Line2D([0], [0], color=self.edge_color,
-                          linewidth=8, label='Strong Interaction (750-1000)')
+                plt.Line2D([0], [0], color='#2E86AB', 
+                          linewidth=6, label='High Confidence (701-1000)'),
+                plt.Line2D([0], [0], color='#7FB3D3', 
+                          linewidth=3, label='Medium Confidence (400-700)')
             ]
             plt.legend(handles=legend_elements, loc='upper left', bbox_to_anchor=(1, 1))
 
             # Add threshold information
             threshold_text = (f'Edge Filtering:\n'
                             f'Combined Score > {self.combined_score_threshold}\n'
-                            f'Edge thickness scales with combined_score\n'
-                            f'(400-1000 range → 1-8 width range)')
+                            f'High Confidence: 701-1000 (thick blue)\n'
+                            f'Medium Confidence: 400-700 (thin light blue)')
 
             plt.figtext(0.02, 0.02, threshold_text, fontsize=10,
                        bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
@@ -275,50 +285,65 @@ class StringGraph(BaseGraph):
                 logger.warning("No interactions found for statistics")
                 return False
 
-            # Calculate statistics
+                        # Calculate statistics
             combined_scores = [d.get('combined_score', 0) for _, _, d in G.edges(data=True)]
-
+            
+            # Count edges by confidence level
+            high_confidence_edges = len([score for score in combined_scores if score >= 701])
+            medium_confidence_edges = len([score for score in combined_scores if 400 <= score < 701])
+            
             stats = {
                 'Total Nodes': G.number_of_nodes(),
                 'Total Edges': G.number_of_edges(),
+                'High Confidence Edges (701-1000)': high_confidence_edges,
+                'Medium Confidence Edges (400-700)': medium_confidence_edges,
                 'Avg Combined Score': np.mean(combined_scores) if combined_scores else 0,
                 'Min Combined Score': np.min(combined_scores) if combined_scores else 0,
                 'Max Combined Score': np.max(combined_scores) if combined_scores else 0,
                 'Std Combined Score': np.std(combined_scores) if combined_scores else 0
             }
 
-            # Create statistics visualization
+                        # Create statistics visualization
             fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 12))
+
+            # Confidence level distribution
+            confidence_levels = ['High (701-1000)', 'Medium (400-700)']
+            confidence_counts = [stats['High Confidence Edges (701-1000)'], stats['Medium Confidence Edges (400-700)']]
+            confidence_colors = ['#2E86AB', '#7FB3D3']
+            ax1.bar(confidence_levels, confidence_counts, color=confidence_colors, alpha=0.8)
+            ax1.set_title('Edge Confidence Distribution', fontweight='bold')
+            ax1.set_ylabel('Number of Edges')
+            ax1.tick_params(axis='x', rotation=45)
 
             # Combined score distribution
             if combined_scores:
-                ax1.hist(combined_scores, bins=20, color=self.edge_color,
+                ax2.hist(combined_scores, bins=20, color=self.edge_color,
                         alpha=0.7, edgecolor='black')
-                ax1.set_title('Combined Score Distribution', fontweight='bold')
-                ax1.set_xlabel('Combined Score')
-                ax1.set_ylabel('Frequency')
-
-            # Score statistics
-            score_stats = ['Min', 'Avg', 'Max']
-            score_values = [stats['Min Combined Score'], stats['Avg Combined Score'], stats['Max Combined Score']]
-            ax2.bar(score_stats, score_values, color=self.edge_color, alpha=0.8)
-            ax2.set_title('Combined Score Statistics', fontweight='bold')
-            ax2.set_ylabel('Score Value')
+                ax2.set_title('Combined Score Distribution', fontweight='bold')
+                ax2.set_xlabel('Combined Score')
+                ax2.set_ylabel('Frequency')
 
             # Network metrics
-            network_metrics = ['Nodes', 'Edges']
-            network_values = [stats['Total Nodes'], stats['Total Edges']]
+            network_metrics = ['Nodes', 'Total Edges', 'High Conf', 'Medium Conf']
+            network_values = [stats['Total Nodes'], stats['Total Edges'], 
+                            stats['High Confidence Edges (701-1000)'], 
+                            stats['Medium Confidence Edges (400-700)']]
             ax3.bar(network_metrics, network_values, color=self.edge_color, alpha=0.8)
-            ax3.set_title('Network Size', fontweight='bold')
+            ax3.set_title('Network Statistics', fontweight='bold')
             ax3.set_ylabel('Count')
+            ax3.tick_params(axis='x', rotation=45)
 
-            # Score range visualization
+            # Score range visualization with confidence zones
             if combined_scores:
-                ax4.scatter(range(len(combined_scores)), sorted(combined_scores),
+                sorted_scores = sorted(combined_scores)
+                ax4.scatter(range(len(sorted_scores)), sorted_scores, 
                            color=self.edge_color, alpha=0.7, s=50)
-                ax4.set_title('Combined Score Range', fontweight='bold')
+                ax4.axhline(y=700, color='#7FB3D3', linestyle='--', alpha=0.7, label='Medium/High Threshold')
+                ax4.axhline(y=400, color='#B8D4E3', linestyle='--', alpha=0.7, label='Low/Medium Threshold')
+                ax4.set_title('Combined Score Range with Confidence Zones', fontweight='bold')
                 ax4.set_xlabel('Edge Index (sorted)')
                 ax4.set_ylabel('Combined Score')
+                ax4.legend()
 
             plt.suptitle(f'Protein Interaction Statistics - {self.anchor_protein}',
                         fontsize=16, fontweight='bold')

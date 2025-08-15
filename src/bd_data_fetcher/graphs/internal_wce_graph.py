@@ -201,7 +201,45 @@ class InternalWCEGraph(BaseGraph):
             logger.exception(f"Error generating WCE data plots: {e}")
             return False
 
-    def _generate_sigmoidal_curves(self, output_dir: str) -> bool:
+    def _add_labels_with_adjusttext(self, ax, points, labels, fontsize=16):
+        """
+        Add labels using adjustText library for optimal positioning.
+
+        Args:
+            ax: Matplotlib axis object
+            points: List of (x, y) coordinates for points
+            labels: List of label texts
+            fontsize: Font size for labels
+        """
+        from adjustText import adjust_text
+        
+        texts = []
+        for i, ((x, y), label) in enumerate(zip(points, labels)):
+            # Alternate above and below the curve for better spacing
+            if i % 2 == 0:
+                # Even indices: place below the curve
+                text = ax.text(x, y-0.4, label, fontsize=fontsize, ha='center', va='top', 
+                              color='black', weight='bold')
+            else:
+                # Odd indices: place above the curve
+                text = ax.text(x, y+0.4, label, fontsize=fontsize, ha='center', va='bottom', 
+                              color='black', weight='bold')
+            texts.append(text)
+        
+        # Use adjustText to optimize label positions - only adjust if poor overlap
+        adjust_text(
+            texts,
+            arrowprops=dict(arrowstyle='-', color='black', alpha=0.8, lw=0.5),
+            expand_points=(1.2, 1.2),
+            force_points=(0.1, 0.1),
+            force_text=(0.5, 0.5),
+            min_arrow_len=3,
+            avoid_points=False,  # Don't avoid data points, only avoid text overlaps
+            avoid_self=False,    # Don't avoid the point the label belongs to
+            only_move={'points': 'xy', 'text': 'xy'}  # Allow both points and text to move
+        )
+
+    def _generate_sigmoidal_curves(self, output_dir: str, label_size: int = 12, prevent_overlap: bool = True) -> bool:
         """Generate sigmoidal curves from WCE data.
 
         Creates separate line plots for each cell line showing:
@@ -211,6 +249,8 @@ class InternalWCEGraph(BaseGraph):
 
         Args:
             output_dir: Directory to save the graphs
+            label_size: Font size for protein labels (default: 18)
+            prevent_overlap: Whether to use smart positioning to prevent label overlap (default: True)
 
         Returns:
             True if generated successfully, False otherwise
@@ -297,8 +337,16 @@ class InternalWCEGraph(BaseGraph):
                             # Calculate average rank for each protein
                             protein_ranks = cell_line_wce.groupby('Gene')['Weight Normalized Intensity Ranking'].mean()
 
-                            # Plot protein rank points
-                            for protein, avg_rank in protein_ranks.items():
+                            # Collect points and labels for smart positioning
+                            points = []
+                            labels = []
+                            colors = []
+
+                            # Plot protein rank points and collect data
+                            # Sort proteins by their x-position (ranking) for proper alternating
+                            sorted_proteins = sorted(protein_ranks.items(), key=lambda x: x[1])
+                            
+                            for i, (protein, avg_rank) in enumerate(sorted_proteins):
                                 # Find corresponding Y value for this rank
                                 rank_idx = int((avg_rank / 1000) * len(y_values))
                                 rank_idx = min(rank_idx, len(y_values) - 1)  # Ensure within bounds
@@ -307,19 +355,16 @@ class InternalWCEGraph(BaseGraph):
                                 # Get color for this protein
                                 protein_color = ProteinColors.get_color(protein, self.anchor_protein)
 
-                                plt.scatter(avg_rank, y_point, color=protein_color, s=50, alpha=0.7, zorder=5)
+                                plt.scatter(avg_rank, y_point, color=protein_color, s=80, alpha=0.8, zorder=5)  # Increased point size
 
-                                # Add protein symbol label
-                                plt.annotate(
-                                    protein,
-                                    xy=(avg_rank, y_point),
-                                    xytext=(0, -10),
-                                    textcoords='offset points',
-                                    fontsize=8,
-                                    ha='center',
-                                    va='top',
-                                    color='black'
-                                )
+                                # Collect data for all proteins
+                                points.append((avg_rank, y_point))
+                                labels.append(protein)
+                                colors.append(protein_color)
+
+                                                        # Add labels using adjustText for optimal positioning
+                            ax = plt.gca()
+                            self._add_labels_with_adjusttext(ax, points, labels, fontsize=label_size)
 
                     # Customize the plot
                     # Remove title and axis labels as requested
