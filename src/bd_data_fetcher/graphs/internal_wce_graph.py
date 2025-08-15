@@ -206,7 +206,7 @@ class InternalWCEGraph(BaseGraph):
 
         Creates separate line plots for each cell line showing:
         - X-axis: Standardized rankings (0-1000)
-        - Y-axis: Log10-transformed normalized intensities
+        - Y-axis: Log2-transformed normalized intensities
         - Smooth curves with average protein ranks as points
 
         Args:
@@ -325,7 +325,7 @@ class InternalWCEGraph(BaseGraph):
                     # Remove title and axis labels as requested
                     # plt.title(f'Sigmoidal Curve - {cell_line}', fontsize=16, fontweight='bold', pad=25)
                     # plt.xlabel('Standardized Rankings (0-1000)', fontsize=14, fontweight='bold')
-                    # plt.ylabel('Log10 Normalized Intensity', fontsize=14, fontweight='bold')
+                    # plt.ylabel('Log2 Normalized Intensity', fontsize=14, fontweight='bold')
 
                     # Remove top and right borders
                     ax = plt.gca()

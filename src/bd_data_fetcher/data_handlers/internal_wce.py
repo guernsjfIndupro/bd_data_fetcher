@@ -41,7 +41,7 @@ class WCEDataHandler(BaseDataHandler):
         Returns:
             List[np.ndarray]: A list containing two numpy arrays:
                 - x-axis values representing standardized rankings (0-1000)
-                - y-axis values representing log10-transformed normalized intensities
+                - y-axis values representing log2-transformed normalized intensities
         """
         data_per_cell_line = defaultdict(list)
 
