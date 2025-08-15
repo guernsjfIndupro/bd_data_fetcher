@@ -103,9 +103,9 @@ class WCEDataHandler(BaseDataHandler):
 
             weight_normalized_intensites.append(local_weight_normalized_intensites)
 
-        # Convert to numpy arrays and apply log10 transformation
+        # Convert to numpy arrays and apply log2 transformation
         x_axis = common_rankings
-        y_axis = np.log10(np.mean(weight_normalized_intensites, axis=0))
+        y_axis = np.log2(np.mean(weight_normalized_intensites, axis=0))
 
         return [x_axis, y_axis]
 

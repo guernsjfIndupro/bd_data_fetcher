@@ -203,11 +203,11 @@ def data(
 
                 # wce_data = wce_handler.build_wce_data_csv(uniprotkb_ac, all_cell_lines, output_dir)
                 # depmap_data = depmap_handler.build_dep_map_data_csv([uniprotkb_ac], folder_path=output_dir, cell_line_set=all_cell_lines)
-                external_protein_handler.build_normal_proteomics_csv(uniprotkb_ac, output_dir)
-                external_protein_handler.build_protein_expression_csv(uniprotkb_ac, output_dir)
-                external_protein_handler.build_study_specific_csv(uniprotkb_ac, output_dir)
+                # external_protein_handler.build_normal_proteomics_csv(uniprotkb_ac, output_dir)
+                # external_protein_handler.build_protein_expression_csv(uniprotkb_ac, output_dir)
+                # external_protein_handler.build_study_specific_csv(uniprotkb_ac, output_dir)
                 # gene_handler.build_normal_gene_expression_csv(uniprotkb_ac, output_dir)
-                gene_handler.build_gene_expression_csv(uniprotkb_ac, output_dir)
+                # gene_handler.build_gene_expression_csv(uniprotkb_ac, output_dir)
                 #gene_handler.build_gene_tumor_normal_ratios_csv(uniprotkb_ac, output_dir)
                 #umap_handler.get_umap_data_csv(uniprotkb_ac, output_dir)
 

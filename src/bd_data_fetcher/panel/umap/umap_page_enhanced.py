@@ -1,10 +1,9 @@
 import panel as pn
 import os
 from pathlib import Path
-import asyncio
-import tempfile
-import base64
-from io import BytesIO
+
+# Import the reusable PDF exporter
+from bd_data_fetcher.panel.pdf_exporter import export_panel_to_pdf, export_panel_to_html
 
 # Configure Panel
 pn.extension('bootstrap')
@@ -174,206 +173,7 @@ def create_umap_layout():
     
     return main_layout
 
-async def export_to_pdf_playwright(layout, output_path="umap_report.pdf"):
-    """
-    Export the Panel layout to PDF using Playwright to render the actual HTML.
-    This preserves the exact visual appearance of the Panel layout.
-    """
-    try:
-        print("=== PLAYWRIGHT PDF EXPORT ===")
-        
-        # Save Panel layout to HTML
-        html_path = "umap_report_temp.html"
-        print(f"1. Saving Panel layout to HTML: {html_path}")
-        layout.save(html_path)
-        
-        if not os.path.exists(html_path):
-            print("❌ ERROR: HTML file was not created")
-            return None
-        
-        # Read the HTML content
-        with open(html_path, 'r', encoding='utf-8') as f:
-            html_content = f.read()
-        
-        print(f"2. HTML file size: {len(html_content)} characters")
-        
-        # Create enhanced HTML with proper styling for PDF
-        enhanced_html = f"""
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>UMAP Analysis Report</title>
-            <style>
-                @page {{
-                    size: A4 landscape;
-                    margin: 0.5in;
-                }}
-                body {{
-                    font-family: Arial, sans-serif;
-                    margin: 0;
-                    padding: 20px;
-                    background-color: white;
-                    line-height: 1.4;
-                }}
-                /* Ensure Panel elements are visible */
-                .bk-root {{
-                    font-family: Arial, sans-serif !important;
-                }}
-                .bk-panel-models-layout-Column, .bk-panel-models-layout-Row {{
-                    display: flex !important;
-                    visibility: visible !important;
-                    opacity: 1 !important;
-                }}
-                .bk-panel-models-layout-Row {{
-                    flex-direction: row !important;
-                }}
-                .bk-panel-models-layout-Column {{
-                    flex-direction: column !important;
-                }}
-                /* Image handling */
-                img {{
-                    max-width: 100% !important;
-                    height: auto !important;
-                    display: block !important;
-                }}
-                .bk-pane-png {{
-                    display: block !important;
-                }}
-                /* Vertical text */
-                .vertical-text {{
-                    writing-mode: vertical-rl !important;
-                    text-orientation: mixed !important;
-                    transform: rotate(180deg) !important;
-                }}
-                /* Ensure all Panel elements are visible */
-                .bk {{
-                    display: block !important;
-                }}
-                /* Force proper sizing */
-                .bk-panel-models-layout-Column, .bk-panel-models-layout-Row {{
-                    width: auto !important;
-                    height: auto !important;
-                }}
-                /* Print-specific styles */
-                @media print {{
-                    body {{
-                        -webkit-print-color-adjust: exact !important;
-                        color-adjust: exact !important;
-                    }}
-                    .vertical-text {{
-                        background-color: #e3f2fd !important;
-                    }}
-                }}
-            </style>
-        </head>
-        <body>
-            {html_content}
-        </body>
-        </html>
-        """
-        
-        # Save enhanced HTML
-        enhanced_html_path = "umap_report_enhanced.html"
-        with open(enhanced_html_path, 'w', encoding='utf-8') as f:
-            f.write(enhanced_html)
-        print(f"3. Enhanced HTML saved: {enhanced_html_path}")
-        
-        # Use Playwright to render HTML and generate PDF
-        print("4. Starting Playwright browser...")
-        
-        try:
-            from playwright.async_api import async_playwright
-            
-            async with async_playwright() as p:
-                # Launch browser
-                browser = await p.chromium.launch()
-                page = await browser.new_page()
-                
-                # Set viewport for better rendering
-                await page.set_viewport_size({"width": 1200, "height": 800})
-                
-                # Load the HTML content
-                print("5. Loading HTML content...")
-                await page.set_content(enhanced_html)
-                
-                # Wait for content to load
-                await page.wait_for_load_state('networkidle')
-                
-                # Generate PDF
-                print("6. Generating PDF...")
-                await page.pdf(
-                    path=output_path,
-                    format='A4',
-                    landscape=True,
-                    margin={
-                        'top': '0.5in',
-                        'right': '0.5in',
-                        'bottom': '0.5in',
-                        'left': '0.5in'
-                    },
-                    print_background=True,
-                    prefer_css_page_size=True
-                )
-                
-                await browser.close()
-                
-        except ImportError:
-            print("❌ Playwright not available - trying alternative methods")
-            return None
-        
-        # Check if PDF was created
-        if os.path.exists(output_path):
-            pdf_size = os.path.getsize(output_path)
-            print(f"✅ PDF successfully created with Playwright: {output_path} (size: {pdf_size} bytes)")
-            
-            if pdf_size < 1000:
-                print("⚠️  WARNING: PDF file seems too small, may be empty")
-                return None
-            
-            return output_path
-        else:
-            print("❌ ERROR: PDF file was not created")
-            return None
-        
-    except Exception as e:
-        print(f"❌ Error exporting to PDF with Playwright: {e}")
-        import traceback
-        traceback.print_exc()
-        return None
-
-def export_to_pdf_playwright_sync(layout, output_path="umap_report.pdf"):
-    """
-    Synchronous wrapper for Playwright PDF export.
-    """
-    try:
-        return asyncio.run(export_to_pdf_playwright(layout, output_path))
-    except Exception as e:
-        print(f"❌ Error in Playwright sync wrapper: {e}")
-        return None
-
-def export_to_html(layout, output_path="umap_report.html"):
-    """
-    Export the Panel layout to HTML as a fallback option.
-    """
-    try:
-        print("=== HTML EXPORT ===")
-        layout.save(output_path)
-        
-        if os.path.exists(output_path):
-            file_size = os.path.getsize(output_path)
-            print(f"✅ HTML successfully created: {output_path} (size: {file_size} bytes)")
-            return output_path
-        else:
-            print("❌ HTML file was not created")
-            return None
-            
-    except Exception as e:
-        print(f"❌ Error exporting to HTML: {e}")
-        import traceback
-        traceback.print_exc()
-        return None
+# PDF export functions are now handled by the reusable pdf_exporter module
 
 def create_full_report():
     """
@@ -401,15 +201,23 @@ def main():
     # Show the app
     # report.show()
 
-    print("Attempting PDF export with Playwright...")
-    pdf_path = export_to_pdf_playwright_sync(report)
+    print("Attempting PDF export with reusable Playwright exporter...")
+    pdf_path = export_panel_to_pdf(
+        layout=report,
+        output_path="umap_report.pdf",
+        title="UMAP Analysis Report",
+        page_size="A4",
+        orientation="landscape",
+        margin=0.5,
+        print_background=True
+    )
     
     if pdf_path and pdf_path.endswith('.pdf'):
         print(f"✅ PDF successfully created: {pdf_path}")
     else:
         print("❌ PDF export failed")
         print("🔄 Attempting HTML export as fallback...")
-        html_path = export_to_html(report)
+        html_path = export_panel_to_html(report, "umap_report.html")
         if html_path:
             print(f"✅ HTML export successful: {html_path}")
     
