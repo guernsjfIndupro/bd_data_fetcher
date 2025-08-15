@@ -236,7 +236,7 @@ class ExternalProteinExpressionGraph(BaseGraph):
             sns.heatmap(
                 heatmap_data_log2,
                 annot=False,
-                cmap='RdBu',  # Red-Blue diverging colormap for tumor/normal ratios
+                cmap='Blues',
                 center=0,  # Center at 0 for log2 ratios
                 cbar_kws={'label': 'Log2(Tumor/Normal Ratio)'},
                 linewidths=0.2,

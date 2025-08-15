@@ -224,12 +224,12 @@ class DepMapGraph(BaseGraph):
                     # Customize the plot
                     plt.title(
                         f'DepMap TPM Log2 vs WCE Copy Number\nProtein: {protein}',
-                        fontsize=16,
+                        fontsize=24,  # Increased from 16 (50% larger)
                         fontweight='bold',
                         pad=25
                     )
-                    plt.xlabel('DepMap TPM Log2', fontsize=14, fontweight='bold')
-                    plt.ylabel('Log2 Copy Number (WCE)', fontsize=14, fontweight='bold')
+                    plt.xlabel('DepMap TPM Log2', fontsize=21, fontweight='bold')  # Increased from 14 (50% larger)
+                    plt.ylabel('Log2 Copy Number (WCE)', fontsize=21, fontweight='bold')  # Increased from 14 (50% larger)
 
 
 
@@ -247,7 +247,7 @@ class DepMapGraph(BaseGraph):
                         logger.warning(f"No UniProtKB AC found for protein {protein}, using default axis limits")
 
                     # Add legend
-                    plt.legend(title='Onc Lineage', loc='upper left', fontsize=10)
+                    plt.legend(title='Onc Lineage', loc='upper left', fontsize=15)  # Increased from 10 (50% larger)
 
                     # Remove top and right borders
                     ax = plt.gca()

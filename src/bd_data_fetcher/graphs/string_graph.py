@@ -22,32 +22,19 @@ class StringGraph(BaseGraph):
     """
 
     def __init__(self, data_dir_path: str, anchor_protein: str,
-                 coexpression_threshold: float = 0.0,
-                 experiments_threshold: float = 0.0,
-                 textmining_threshold: float = 0.0,
                  combined_score_threshold: float = 400.0):
         """Initialize the STRING graph generator.
 
         Args:
             data_dir_path: Path to the directory containing CSV files
             anchor_protein: Anchor protein symbol to use for graph generation
-            coexpression_threshold: Minimum threshold for coexpression scores
-            experiments_threshold: Minimum threshold for experimental scores
-            textmining_threshold: Minimum threshold for text mining scores
             combined_score_threshold: Minimum threshold for combined scores
         """
         super().__init__(data_dir_path, anchor_protein)
-        self.coexpression_threshold = coexpression_threshold
-        self.experiments_threshold = experiments_threshold
-        self.textmining_threshold = textmining_threshold
         self.combined_score_threshold = combined_score_threshold
 
-        # Color scheme for different interaction types
-        self.interaction_colors = {
-            'coexpression': '#FF6B6B',      # Red
-            'experiments': '#4ccd4c',       # Green
-            'textmining': '#45B7D1'         # Blue
-        }
+        # Single color for all interactions
+        self.edge_color = '#2E86AB'  # Blue color for all edges
 
     def generate_graphs(self, output_dir: str) -> bool:
         """Generate protein-protein interaction network graphs.
@@ -146,30 +133,19 @@ class StringGraph(BaseGraph):
         for symbol in unique_symbols:
             G.add_node(symbol)
 
-        # Add edges based on interaction scores
+        # Add edges based on combined_score only
         for _, row in string_data.iterrows():
             symbol1 = row['symbol1']
             symbol2 = row['symbol2']
 
             # Only include interactions between proteins in our gene list
             if symbol1 in unique_symbols and symbol2 in unique_symbols:
-                # Check if any score meets the threshold
-                has_coexpression = row['coexpression_both_prior_corrected'] > self.coexpression_threshold
-                has_experiments = row['experiments_both_prior_corrected'] > self.experiments_threshold
-                has_textmining = row['textmining_both_prior_corrected'] > self.textmining_threshold
-
-                if has_coexpression or has_experiments or has_textmining:
-                    # Add edge with attributes
-                    edge_attrs = {
-                        'coexpression_score': row['coexpression_both_prior_corrected'],
-                        'experiments_score': row['experiments_both_prior_corrected'],
-                        'textmining_score': row['textmining_both_prior_corrected'],
-                        'combined_score': row['combined_score'],
-                        'has_coexpression': has_coexpression,
-                        'has_experiments': has_experiments,
-                        'has_textmining': has_textmining
-                    }
-                    G.add_edge(symbol1, symbol2, **edge_attrs)
+                # Only use combined_score for edge inclusion
+                combined_score = row['combined_score']
+                
+                if combined_score > self.combined_score_threshold:
+                    # Add edge with only combined_score attribute
+                    G.add_edge(symbol1, symbol2, combined_score=combined_score)
 
         logger.info(f"Created network with {G.number_of_nodes()} nodes and {G.number_of_edges()} edges")
         return G
@@ -207,52 +183,51 @@ class StringGraph(BaseGraph):
             # Use spring layout for better visualization
             pos = nx.spring_layout(G, k=1, iterations=50, seed=42)
 
-            # Draw nodes
+            # Draw nodes with larger size
             nx.draw_networkx_nodes(G, pos,
                                  node_color='lightblue',
-                                 node_size=500,
+                                 node_size=1000,  # Increased from 500 (2x larger)
                                  alpha=0.8)
 
-            # Draw edges with different colors based on interaction type
-            coexpression_edges = [(u, v) for u, v, d in G.edges(data=True)
-                                 if d.get('has_coexpression', False)]
-            experiments_edges = [(u, v) for u, v, d in G.edges(data=True)
-                               if d.get('has_experiments', False)]
-            textmining_edges = [(u, v) for u, v, d in G.edges(data=True)
-                              if d.get('has_textmining', False)]
+            # Draw edges with thickness based on combined_score
+            edges = list(G.edges(data=True))
+            edge_widths = []
+            
+            for u, v, d in edges:
+                combined_score = d.get('combined_score', 0)
+                # Normalize combined_score to width (400-1000 range to 1-8 width range)
+                width = max(1, min(8, (combined_score - 400) / 75 + 1))
+                edge_widths.append(width)
 
-            # Draw edges
-            if coexpression_edges:
-                nx.draw_networkx_edges(G, pos, edgelist=coexpression_edges,
-                                     edge_color=self.interaction_colors['coexpression'],
-                                     width=2, alpha=0.7, label='Coexpression')
+            # Draw all edges with varying thickness and single color
+            nx.draw_networkx_edges(G, pos, edgelist=edges,
+                                 edge_color=self.edge_color,
+                                 width=edge_widths,
+                                 alpha=0.7)
 
-            if experiments_edges:
-                nx.draw_networkx_edges(G, pos, edgelist=experiments_edges,
-                                     edge_color=self.interaction_colors['experiments'],
-                                     width=2, alpha=0.7, label='Experiments')
-
-            if textmining_edges:
-                nx.draw_networkx_edges(G, pos, edgelist=textmining_edges,
-                                     edge_color=self.interaction_colors['textmining'],
-                                     width=2, alpha=0.7, label='Text Mining')
-
-            # Draw node labels
-            nx.draw_networkx_labels(G, pos, font_size=8, font_weight='bold')
+            # Draw node labels with larger font
+            nx.draw_networkx_labels(G, pos, font_size=12, font_weight='bold')  # Increased from 8 (50% larger)
 
             # Customize the plot
             plt.title(f'Protein-Protein Interaction Network\n{self.anchor_protein} and Related Proteins',
                      fontsize=16, fontweight='bold', pad=20)
 
-            # Add legend
-            plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
+            # Add legend for edge thickness
+            legend_elements = [
+                plt.Line2D([0], [0], color=self.edge_color, 
+                          linewidth=1, label='Weak Interaction (400-500)'),
+                plt.Line2D([0], [0], color=self.edge_color, 
+                          linewidth=4, label='Medium Interaction (500-750)'),
+                plt.Line2D([0], [0], color=self.edge_color, 
+                          linewidth=8, label='Strong Interaction (750-1000)')
+            ]
+            plt.legend(handles=legend_elements, loc='upper left', bbox_to_anchor=(1, 1))
 
             # Add threshold information
-            threshold_text = (f'Thresholds:\n'
+            threshold_text = (f'Edge Filtering:\n'
                             f'Combined Score > {self.combined_score_threshold}\n'
-                            f'Coexpression > {self.coexpression_threshold}\n'
-                            f'Experiments > {self.experiments_threshold}\n'
-                            f'Text Mining > {self.textmining_threshold}')
+                            f'Edge thickness scales with combined_score\n'
+                            f'(400-1000 range → 1-8 width range)')
 
             plt.figtext(0.02, 0.02, threshold_text, fontsize=10,
                        bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
@@ -301,66 +276,49 @@ class StringGraph(BaseGraph):
                 return False
 
             # Calculate statistics
+            combined_scores = [d.get('combined_score', 0) for _, _, d in G.edges(data=True)]
+            
             stats = {
                 'Total Nodes': G.number_of_nodes(),
                 'Total Edges': G.number_of_edges(),
-                'Coexpression Edges': len([(u, v) for u, v, d in G.edges(data=True)
-                                         if d.get('has_coexpression', False)]),
-                'Experimental Edges': len([(u, v) for u, v, d in G.edges(data=True)
-                                         if d.get('has_experiments', False)]),
-                'Text Mining Edges': len([(u, v) for u, v, d in G.edges(data=True)
-                                        if d.get('has_textmining', False)])
+                'Avg Combined Score': np.mean(combined_scores) if combined_scores else 0,
+                'Min Combined Score': np.min(combined_scores) if combined_scores else 0,
+                'Max Combined Score': np.max(combined_scores) if combined_scores else 0,
+                'Std Combined Score': np.std(combined_scores) if combined_scores else 0
             }
-
-            # Calculate average scores
-            coexpression_scores = [d.get('coexpression_score', 0) for _, _, d in G.edges(data=True)]
-            experiments_scores = [d.get('experiments_score', 0) for _, _, d in G.edges(data=True)]
-            textmining_scores = [d.get('textmining_score', 0) for _, _, d in G.edges(data=True)]
-            combined_scores = [d.get('combined_score', 0) for _, _, d in G.edges(data=True)]
-
-            stats.update({
-                'Avg Coexpression Score': np.mean(coexpression_scores) if coexpression_scores else 0,
-                'Avg Experiments Score': np.mean(experiments_scores) if experiments_scores else 0,
-                'Avg Text Mining Score': np.mean(textmining_scores) if textmining_scores else 0,
-                'Avg Combined Score': np.mean(combined_scores) if combined_scores else 0
-            })
 
             # Create statistics visualization
             fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 12))
 
-            # Edge type distribution
-            edge_types = ['Coexpression', 'Experiments', 'Text Mining']
-            edge_counts = [stats['Coexpression Edges'], stats['Experimental Edges'], stats['Text Mining Edges']]
-            colors = [self.interaction_colors['coexpression'],
-                     self.interaction_colors['experiments'],
-                     self.interaction_colors['textmining']]
-
-            ax1.bar(edge_types, edge_counts, color=colors, alpha=0.8)
-            ax1.set_title('Interaction Types Distribution', fontweight='bold')
-            ax1.set_ylabel('Number of Interactions')
-            ax1.tick_params(axis='x', rotation=45)
-
-            # Score distributions
-            if coexpression_scores:
-                ax2.hist(coexpression_scores, bins=20, color=self.interaction_colors['coexpression'],
+            # Combined score distribution
+            if combined_scores:
+                ax1.hist(combined_scores, bins=20, color=self.edge_color,
                         alpha=0.7, edgecolor='black')
-                ax2.set_title('Coexpression Score Distribution', fontweight='bold')
-                ax2.set_xlabel('Score')
-                ax2.set_ylabel('Frequency')
+                ax1.set_title('Combined Score Distribution', fontweight='bold')
+                ax1.set_xlabel('Combined Score')
+                ax1.set_ylabel('Frequency')
 
-            if experiments_scores:
-                ax3.hist(experiments_scores, bins=20, color=self.interaction_colors['experiments'],
-                        alpha=0.7, edgecolor='black')
-                ax3.set_title('Experimental Score Distribution', fontweight='bold')
-                ax3.set_xlabel('Score')
-                ax3.set_ylabel('Frequency')
+            # Score statistics
+            score_stats = ['Min', 'Avg', 'Max']
+            score_values = [stats['Min Combined Score'], stats['Avg Combined Score'], stats['Max Combined Score']]
+            ax2.bar(score_stats, score_values, color=self.edge_color, alpha=0.8)
+            ax2.set_title('Combined Score Statistics', fontweight='bold')
+            ax2.set_ylabel('Score Value')
 
-            if textmining_scores:
-                ax4.hist(textmining_scores, bins=20, color=self.interaction_colors['textmining'],
-                        alpha=0.7, edgecolor='black')
-                ax4.set_title('Text Mining Score Distribution', fontweight='bold')
-                ax4.set_xlabel('Score')
-                ax4.set_ylabel('Frequency')
+            # Network metrics
+            network_metrics = ['Nodes', 'Edges']
+            network_values = [stats['Total Nodes'], stats['Total Edges']]
+            ax3.bar(network_metrics, network_values, color=self.edge_color, alpha=0.8)
+            ax3.set_title('Network Size', fontweight='bold')
+            ax3.set_ylabel('Count')
+
+            # Score range visualization
+            if combined_scores:
+                ax4.scatter(range(len(combined_scores)), sorted(combined_scores), 
+                           color=self.edge_color, alpha=0.7, s=50)
+                ax4.set_title('Combined Score Range', fontweight='bold')
+                ax4.set_xlabel('Edge Index (sorted)')
+                ax4.set_ylabel('Combined Score')
 
             plt.suptitle(f'Protein Interaction Statistics - {self.anchor_protein}',
                         fontsize=16, fontweight='bold')

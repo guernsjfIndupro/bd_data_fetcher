@@ -164,7 +164,7 @@ class InternalWCEGraph(BaseGraph):
                     plt.ylabel('Weight Normalized Intensity Ranking', fontsize=14, fontweight='bold')
 
                     # Set x-axis labels with replicate counts
-                    labels_with_counts = [f"{cell_line}\n(n={int(count)})" for cell_line, count in zip(complete_df['Cell Line'], complete_df['count'], strict=False)]
+                    labels_with_counts = [f"{cell_line} (n={int(count)})" for cell_line, count in zip(complete_df['Cell Line'], complete_df['count'], strict=False)]
                     plt.xticks(x_positions, labels_with_counts, rotation=45, ha='right')
 
                     # Add legend for onc lineages
