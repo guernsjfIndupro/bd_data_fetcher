@@ -6,10 +6,9 @@ using Playwright. It preserves the exact visual appearance of Panel layouts incl
 styling, images, and layout structure.
 """
 
-import os
 import asyncio
-from pathlib import Path
-from typing import Optional, Union
+import os
+
 import panel as pn
 
 
@@ -20,8 +19,8 @@ class PanelPDFExporter:
     This class handles the conversion of Panel HTML layouts to high-quality PDFs
     while preserving the exact visual appearance, styling, and layout structure.
     """
-    
-    def __init__(self, 
+
+    def __init__(self,
                  page_size: str = "A4",
                  orientation: str = "landscape",
                  margin: float = 0.5,
@@ -39,11 +38,11 @@ class PanelPDFExporter:
         self.orientation = orientation
         self.margin = margin
         self.print_background = print_background
-        
-    async def _export_to_pdf_async(self, 
+
+    async def _export_to_pdf_async(self,
                                   layout: pn.layout.Panel,
                                   output_path: str,
-                                  title: Optional[str] = None) -> Optional[str]:
+                                  title: str | None = None) -> str | None:
         """
         Asynchronously export a Panel layout to PDF using Playwright.
         
@@ -57,52 +56,52 @@ class PanelPDFExporter:
         """
         try:
             print("=== PLAYWRIGHT PDF EXPORT ===")
-            
+
             # Save Panel layout to temporary HTML
             temp_html_path = f"{output_path}_temp.html"
             print(f"1. Saving Panel layout to HTML: {temp_html_path}")
             layout.save(temp_html_path)
-            
+
             if not os.path.exists(temp_html_path):
                 print("❌ ERROR: HTML file was not created")
                 return None
-            
+
             # Read the HTML content
-            with open(temp_html_path, 'r', encoding='utf-8') as f:
+            with open(temp_html_path, encoding='utf-8') as f:
                 html_content = f.read()
-            
+
             print(f"2. HTML file size: {len(html_content)} characters")
-            
+
             # Create enhanced HTML with proper styling for PDF
             enhanced_html = self._create_enhanced_html(html_content, title)
-            
+
             # Save enhanced HTML
             enhanced_html_path = f"{output_path}_enhanced.html"
             with open(enhanced_html_path, 'w', encoding='utf-8') as f:
                 f.write(enhanced_html)
             print(f"3. Enhanced HTML saved: {enhanced_html_path}")
-            
+
             # Use Playwright to render HTML and generate PDF
             print("4. Starting Playwright browser...")
-            
+
             try:
                 from playwright.async_api import async_playwright
-                
+
                 async with async_playwright() as p:
                     # Launch browser
                     browser = await p.chromium.launch()
                     page = await browser.new_page()
-                    
+
                     # Set viewport for better rendering
                     await page.set_viewport_size({"width": 1200, "height": 800})
-                    
+
                     # Load the HTML content
                     print("5. Loading HTML content...")
                     await page.set_content(enhanced_html)
-                    
+
                     # Wait for content to load
                     await page.wait_for_load_state('networkidle')
-                    
+
                     # Generate PDF
                     print("6. Generating PDF...")
                     await page.pdf(
@@ -118,34 +117,34 @@ class PanelPDFExporter:
                         print_background=self.print_background,
                         prefer_css_page_size=True
                     )
-                    
+
                     await browser.close()
-                    
+
             except ImportError:
                 print("❌ Playwright not available")
                 return None
-            
+
             # Check if PDF was created
             if os.path.exists(output_path):
                 pdf_size = os.path.getsize(output_path)
                 print(f"✅ PDF successfully created with Playwright: {output_path} (size: {pdf_size} bytes)")
-                
+
                 if pdf_size < 1000:
                     print("⚠️  WARNING: PDF file seems too small, may be empty")
                     return None
-                
+
                 return output_path
             else:
                 print("❌ ERROR: PDF file was not created")
                 return None
-            
+
         except Exception as e:
             print(f"❌ Error exporting to PDF with Playwright: {e}")
             import traceback
             traceback.print_exc()
             return None
-    
-    def _create_enhanced_html(self, html_content: str, title: Optional[str] = None) -> str:
+
+    def _create_enhanced_html(self, html_content: str, title: str | None = None) -> str:
         """
         Create enhanced HTML with proper styling for PDF generation.
         
@@ -157,7 +156,7 @@ class PanelPDFExporter:
             Enhanced HTML string with PDF-specific styling
         """
         doc_title = title or "Panel Layout Report"
-        
+
         return f"""
         <!DOCTYPE html>
         <html lang="en">
@@ -233,11 +232,11 @@ class PanelPDFExporter:
         </body>
         </html>
         """
-    
-    def export_to_pdf(self, 
+
+    def export_to_pdf(self,
                      layout: pn.layout.Panel,
                      output_path: str,
-                     title: Optional[str] = None) -> Optional[str]:
+                     title: str | None = None) -> str | None:
         """
         Export a Panel layout to PDF.
         
@@ -254,10 +253,10 @@ class PanelPDFExporter:
         except Exception as e:
             print(f"❌ Error in PDF export: {e}")
             return None
-    
-    def export_to_html(self, 
+
+    def export_to_html(self,
                       layout: pn.layout.Panel,
-                      output_path: str) -> Optional[str]:
+                      output_path: str) -> str | None:
         """
         Export a Panel layout to HTML as a fallback option.
         
@@ -271,7 +270,7 @@ class PanelPDFExporter:
         try:
             print("=== HTML EXPORT ===")
             layout.save(output_path)
-            
+
             if os.path.exists(output_path):
                 file_size = os.path.getsize(output_path)
                 print(f"✅ HTML successfully created: {output_path} (size: {file_size} bytes)")
@@ -279,7 +278,7 @@ class PanelPDFExporter:
             else:
                 print("❌ HTML file was not created")
                 return None
-                
+
         except Exception as e:
             print(f"❌ Error exporting to HTML: {e}")
             import traceback
@@ -289,11 +288,11 @@ class PanelPDFExporter:
 
 def export_panel_to_pdf(layout: pn.layout.Panel,
                        output_path: str,
-                       title: Optional[str] = None,
+                       title: str | None = None,
                        page_size: str = "A4",
                        orientation: str = "landscape",
                        margin: float = 0.5,
-                       print_background: bool = True) -> Optional[str]:
+                       print_background: bool = True) -> str | None:
     """
     Convenience function to export a Panel layout to PDF.
     
@@ -319,7 +318,7 @@ def export_panel_to_pdf(layout: pn.layout.Panel,
 
 
 def export_panel_to_html(layout: pn.layout.Panel,
-                        output_path: str) -> Optional[str]:
+                        output_path: str) -> str | None:
     """
     Convenience function to export a Panel layout to HTML.
     
@@ -331,4 +330,4 @@ def export_panel_to_html(layout: pn.layout.Panel,
         Path to the generated HTML file, or None if failed
     """
     exporter = PanelPDFExporter()
-    return exporter.export_to_html(layout, output_path) 
+    return exporter.export_to_html(layout, output_path)

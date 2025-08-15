@@ -131,7 +131,7 @@ class ExternalProteinExpressionGraph(BaseGraph):
 
             # Get bounds from UMAP API (cached)
             bounds = self._get_proteomics_bounds()
-            
+
             # Get min and max values for heatmap limits
             vmin = bounds.get('min_copies_per_cell') if bounds else None
             vmax = bounds.get('max_copies_per_cell') if bounds else None

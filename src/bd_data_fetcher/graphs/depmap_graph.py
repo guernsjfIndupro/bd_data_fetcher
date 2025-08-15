@@ -12,7 +12,7 @@ import seaborn as sns
 from bd_data_fetcher.api.umap_client import UMapClient
 from bd_data_fetcher.data_handlers.utils import FileNames
 from bd_data_fetcher.graphs.base_graph import BaseGraph
-from bd_data_fetcher.graphs.shared import OncLineageColors, ProteinColors
+from bd_data_fetcher.graphs.shared import OncLineageColors
 
 logger = logging.getLogger(__name__)
 
@@ -40,10 +40,10 @@ class DepMapGraph(BaseGraph):
             # Get bounds from UMAP API
             umap_client = UMapClient()
             bounds = umap_client._get_dep_map_bounds(uniprotkb_ac)
-            
+
             logger.info(f"Retrieved DepMap bounds for {uniprotkb_ac}: {bounds}")
             return bounds
-            
+
         except Exception as e:
             logger.warning(f"Failed to get DepMap bounds for {uniprotkb_ac}: {e}")
             # Return default bounds if API call fails
@@ -239,7 +239,7 @@ class DepMapGraph(BaseGraph):
                         bounds = self._get_depmap_bounds_for_protein(protein_uniprotkb_ac)
                         min_tpm = bounds.get('min_tpm_log2', 0)
                         max_tpm = bounds.get('max_tpm_log2', 10)
-                        
+
                         # Set x-axis limits (DepMap TPM Log2)
                         plt.xlim(min_tpm, max_tpm)
                         logger.info(f"Set DepMap TPM Log2 axis limits for {protein}: {min_tpm} to {max_tpm}")

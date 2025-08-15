@@ -105,7 +105,7 @@ class UMapGraph(BaseGraph):
 
             # Get unique replicate set IDs
             replicate_set_ids = df['Replicate Set ID'].unique()
-            
+
             if len(replicate_set_ids) == 0:
                 logger.error("No replicate set IDs found in UMap data")
                 return False
@@ -120,7 +120,7 @@ class UMapGraph(BaseGraph):
                 try:
                     # Filter data for current replicate set
                     replicate_df = df[df['Replicate Set ID'] == replicate_set_id]
-                    
+
                     if replicate_df.empty:
                         logger.warning(f"No data found for replicate set ID: {replicate_set_id}")
                         continue
@@ -138,7 +138,7 @@ class UMapGraph(BaseGraph):
                     # Separate data by fold change threshold - gray out values below -0.5
                     low_fc_data = replicate_df[replicate_df['Log2 FC'] < 0.5]
                     high_fc_data = replicate_df[replicate_df['Log2 FC'] >= 0.5]
-                    
+
                     # Plot low fold change points (below -0.5) in grey
                     if not low_fc_data.empty:
                         plt.scatter(
@@ -148,7 +148,7 @@ class UMapGraph(BaseGraph):
                             color='grey',
                             s=20,
                         )
-                    
+
                     # Plot high fold change points (≥-0.5) in light blue
                     if not high_fc_data.empty:
                         plt.scatter(

@@ -142,7 +142,7 @@ class GeneExpressionGraph(BaseGraph):
             # Get bounds from UMAP API (cached)
             studies = ("TCGA",)  # Tuple for caching
             bounds = self._get_gene_expression_bounds(studies, is_cancer=False)
-            
+
             # Get min and max values for heatmap limits
             vmin = bounds.get('min_bound') if bounds else None
             vmax = bounds.get('max_bound') if bounds else None

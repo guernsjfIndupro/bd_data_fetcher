@@ -142,7 +142,7 @@ class StringGraph(BaseGraph):
             if symbol1 in unique_symbols and symbol2 in unique_symbols:
                 # Only use combined_score for edge inclusion
                 combined_score = row['combined_score']
-                
+
                 if combined_score > self.combined_score_threshold:
                     # Add edge with only combined_score attribute
                     G.add_edge(symbol1, symbol2, combined_score=combined_score)
@@ -192,7 +192,7 @@ class StringGraph(BaseGraph):
             # Draw edges with thickness based on combined_score
             edges = list(G.edges(data=True))
             edge_widths = []
-            
+
             for u, v, d in edges:
                 combined_score = d.get('combined_score', 0)
                 # Normalize combined_score to width (400-1000 range to 1-8 width range)
@@ -214,11 +214,11 @@ class StringGraph(BaseGraph):
 
             # Add legend for edge thickness
             legend_elements = [
-                plt.Line2D([0], [0], color=self.edge_color, 
+                plt.Line2D([0], [0], color=self.edge_color,
                           linewidth=1, label='Weak Interaction (400-500)'),
-                plt.Line2D([0], [0], color=self.edge_color, 
+                plt.Line2D([0], [0], color=self.edge_color,
                           linewidth=4, label='Medium Interaction (500-750)'),
-                plt.Line2D([0], [0], color=self.edge_color, 
+                plt.Line2D([0], [0], color=self.edge_color,
                           linewidth=8, label='Strong Interaction (750-1000)')
             ]
             plt.legend(handles=legend_elements, loc='upper left', bbox_to_anchor=(1, 1))
@@ -277,7 +277,7 @@ class StringGraph(BaseGraph):
 
             # Calculate statistics
             combined_scores = [d.get('combined_score', 0) for _, _, d in G.edges(data=True)]
-            
+
             stats = {
                 'Total Nodes': G.number_of_nodes(),
                 'Total Edges': G.number_of_edges(),
@@ -314,7 +314,7 @@ class StringGraph(BaseGraph):
 
             # Score range visualization
             if combined_scores:
-                ax4.scatter(range(len(combined_scores)), sorted(combined_scores), 
+                ax4.scatter(range(len(combined_scores)), sorted(combined_scores),
                            color=self.edge_color, alpha=0.7, s=50)
                 ax4.set_title('Combined Score Range', fontweight='bold')
                 ax4.set_xlabel('Edge Index (sorted)')
