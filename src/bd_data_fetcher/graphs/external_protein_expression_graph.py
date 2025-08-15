@@ -1,6 +1,7 @@
 """External protein expression data visualization graphs."""
 
 import logging
+from functools import lru_cache
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -23,8 +24,22 @@ class ExternalProteinExpressionGraph(BaseGraph):
     Uses an anchor protein as a reference point for visualizations.
     """
 
-    # Cache for proteomics bounds to avoid repeated API calls
-    _proteomics_bounds_cache = None
+    @lru_cache(maxsize=1)
+    def _get_proteomics_bounds(self) -> dict[str, float]:
+        """
+        Get proteomics bounds from UMAP API, using LRU caching to avoid repeated API calls.
+        
+        Returns:
+            Dictionary containing min_copies_per_cell and max_copies_per_cell values
+        """
+        try:
+            umap_client = UMapClient()
+            bounds = umap_client._get_proteomics_normal_expression_data_bounds()
+            logger.info(f"Retrieved proteomics bounds: {bounds}")
+            return bounds
+        except Exception as e:
+            logger.warning(f"Failed to get proteomics bounds from API: {e}")
+            return {}
 
     def generate_graphs(self, output_dir: str) -> bool:
         """Generate all relevant graphs for external protein expression data.
@@ -115,21 +130,12 @@ class ExternalProteinExpressionGraph(BaseGraph):
             heatmap_data_log10 = np.log10(heatmap_data_log10)
 
             # Get bounds from UMAP API (cached)
-            if ExternalProteinExpressionGraph._proteomics_bounds_cache is None:
-                try:
-                    umap_client = UMapClient()
-                    ExternalProteinExpressionGraph._proteomics_bounds_cache = umap_client._get_proteomics_normal_expression_data_bounds()
-                    logger.info(f"Cached proteomics bounds: {ExternalProteinExpressionGraph._proteomics_bounds_cache}")
-                except Exception as e:
-                    logger.warning(f"Failed to get proteomics bounds from API: {e}")
-                    ExternalProteinExpressionGraph._proteomics_bounds_cache = {}
-
+            bounds = self._get_proteomics_bounds()
+            
             # Get min and max values for heatmap limits
-            vmin = None
-            vmax = None
-            if ExternalProteinExpressionGraph._proteomics_bounds_cache:
-                vmin = ExternalProteinExpressionGraph._proteomics_bounds_cache.get('min_copies_per_cell')
-                vmax = ExternalProteinExpressionGraph._proteomics_bounds_cache.get('max_copies_per_cell')
+            vmin = bounds.get('min_copies_per_cell') if bounds else None
+            vmax = bounds.get('max_copies_per_cell') if bounds else None
+            if vmin is not None and vmax is not None:
                 logger.info(f"Using heatmap limits: vmin={vmin}, vmax={vmax}")
 
             # Create heatmap with masked zeros and forced limits

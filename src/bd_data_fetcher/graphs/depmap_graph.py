@@ -1,6 +1,7 @@
 """DepMap data visualization graphs."""
 
 import logging
+from functools import lru_cache
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -8,9 +9,10 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
+from bd_data_fetcher.api.umap_client import UMapClient
 from bd_data_fetcher.data_handlers.utils import FileNames
 from bd_data_fetcher.graphs.base_graph import BaseGraph
-from bd_data_fetcher.graphs.shared import OncLineageColors
+from bd_data_fetcher.graphs.shared import OncLineageColors, ProteinColors
 
 logger = logging.getLogger(__name__)
 
@@ -19,9 +21,33 @@ class DepMapGraph(BaseGraph):
     """Graph generator for DepMap data.
 
     This class handles visualization of DepMap dependency data,
-    including gene dependency scores and cell line information.
+    including copy number analysis and TPM expression data.
     Uses an anchor protein as a reference point for visualizations.
     """
+
+    @lru_cache(maxsize=128)
+    def _get_depmap_bounds_for_protein(self, uniprotkb_ac: str) -> dict[str, float]:
+        """
+        Get DepMap bounds for a specific protein, using LRU caching to avoid repeated API calls.
+        
+        Args:
+            uniprotkb_ac: UniProtKB accession number
+            
+        Returns:
+            Dictionary containing min_tpm_log2 and max_tpm_log2 values
+        """
+        try:
+            # Get bounds from UMAP API
+            umap_client = UMapClient()
+            bounds = umap_client._get_dep_map_bounds(uniprotkb_ac)
+            
+            logger.info(f"Retrieved DepMap bounds for {uniprotkb_ac}: {bounds}")
+            return bounds
+            
+        except Exception as e:
+            logger.warning(f"Failed to get DepMap bounds for {uniprotkb_ac}: {e}")
+            # Return default bounds if API call fails
+            return {"min_tpm_log2": 0, "max_tpm_log2": 10}
 
     def generate_graphs(self, output_dir: str) -> bool:
         """Generate all relevant graphs for DepMap data.
@@ -77,7 +103,7 @@ class DepMapGraph(BaseGraph):
                 return False
 
             # Check for required columns in DepMap data
-            depmap_required_columns = ['Cell Line', 'TPM Log2', 'Protein Symbol']
+            depmap_required_columns = ['Cell Line', 'TPM Log2', 'Protein Symbol', 'UniProtKB AC']
             depmap_missing_columns = [col for col in depmap_required_columns if col not in depmap_df.columns]
             if depmap_missing_columns:
                 logger.error(f"Missing required columns in DepMap data: {depmap_missing_columns}")
@@ -206,6 +232,19 @@ class DepMapGraph(BaseGraph):
                     plt.ylabel('Log2 Copy Number (WCE)', fontsize=14, fontweight='bold')
 
 
+
+                    # Get DepMap bounds for this protein to set axis limits
+                    protein_uniprotkb_ac = protein_depmap['UniProtKB AC'].iloc[0] if not protein_depmap.empty else None
+                    if protein_uniprotkb_ac:
+                        bounds = self._get_depmap_bounds_for_protein(protein_uniprotkb_ac)
+                        min_tpm = bounds.get('min_tpm_log2', 0)
+                        max_tpm = bounds.get('max_tpm_log2', 10)
+                        
+                        # Set x-axis limits (DepMap TPM Log2)
+                        plt.xlim(min_tpm, max_tpm)
+                        logger.info(f"Set DepMap TPM Log2 axis limits for {protein}: {min_tpm} to {max_tpm}")
+                    else:
+                        logger.warning(f"No UniProtKB AC found for protein {protein}, using default axis limits")
 
                     # Add legend
                     plt.legend(title='Onc Lineage', loc='upper left', fontsize=10)

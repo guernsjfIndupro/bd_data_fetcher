@@ -444,6 +444,20 @@ class UMapServiceClient:
         validated_data = [DepMapData(**data) for data in unvalidated_data]
         return validated_data
 
+    def _get_dep_map_bounds(self, uniprotkb_ac: str) -> dict[str, float]:
+        """
+        Get DepMap bounds for a specific UniProtKB accession number.
+
+        Args:
+            uniprotkb_ac: UniProtKB accession number (e.g., 'P00533')
+
+        Returns:
+            Dictionary containing min_tpm_log2 and max_tpm_log2 values
+        """
+        endpoint = "cell-line/dep-map/bounds"
+        params = {"uniprotkb_ac": uniprotkb_ac}
+        return self._get(endpoint=endpoint, params=params)
+
     def _get_study_metadata(
         self, page_request: int = 1, page_size: int = 200
     ) -> StudyMetadataResponse:

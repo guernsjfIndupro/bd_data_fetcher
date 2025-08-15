@@ -1,6 +1,7 @@
 """Gene expression data visualization graphs."""
 
 import logging
+from functools import lru_cache
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -22,8 +23,28 @@ class GeneExpressionGraph(BaseGraph):
     Uses an anchor protein as a reference point for visualizations.
     """
 
-    # Cache for gene expression bounds to avoid repeated API calls
-    _gene_expression_bounds_cache = None
+    @lru_cache(maxsize=1)
+    def _get_gene_expression_bounds(self, studies: tuple[str, ...], is_cancer: bool) -> dict[str, float]:
+        """
+        Get gene expression bounds from UMAP API, using LRU caching to avoid repeated API calls.
+        
+        Args:
+            studies: Tuple of study names (must be tuple for caching)
+            is_cancer: Whether to get cancer or normal data bounds
+            
+        Returns:
+            Dictionary containing min_bound and max_bound values
+        """
+        try:
+            umap_client = UMapClient()
+            bounds = umap_client._get_gtex_normal_rna_expression_data_bounds(
+                studies=list(studies), is_cancer=is_cancer
+            )
+            logger.info(f"Retrieved gene expression bounds: {bounds}")
+            return bounds
+        except Exception as e:
+            logger.warning(f"Failed to get gene expression bounds from API: {e}")
+            return {}
 
     def generate_graphs(self, output_dir: str) -> bool:
         """Generate all relevant graphs for gene expression data.
@@ -119,26 +140,14 @@ class GeneExpressionGraph(BaseGraph):
             heatmap_data = df.set_index('Gene')[filtered_columns]
 
             # Get bounds from UMAP API (cached)
-            if GeneExpressionGraph._gene_expression_bounds_cache is None:
-                try:
-                    umap_client = UMapClient()
-                    # Get all primary sites for the studies parameter
-                    studies = ["TCGA"]  # Use filtered columns as studies
-                    GeneExpressionGraph._gene_expression_bounds_cache = umap_client._get_gtex_normal_rna_expression_data_bounds(
-                        studies=studies, is_cancer=False
-                    )
-                    logger.info(f"Cached gene expression bounds: {GeneExpressionGraph._gene_expression_bounds_cache}")
-                except Exception as e:
-                    logger.warning(f"Failed to get gene expression bounds from API: {e}")
-                    GeneExpressionGraph._gene_expression_bounds_cache = {}
-
+            studies = ("TCGA",)  # Tuple for caching
+            bounds = self._get_gene_expression_bounds(studies, is_cancer=False)
+            
             # Get min and max values for heatmap limits
-            vmin = None
-            vmax = None
-            if GeneExpressionGraph._gene_expression_bounds_cache:
-                vmin = GeneExpressionGraph._gene_expression_bounds_cache.get('min_bound')
-                vmax = GeneExpressionGraph._gene_expression_bounds_cache.get('max_bound')
-                print(f"Using heatmap limits: vmin={vmin}, vmax={vmax}")
+            vmin = bounds.get('min_bound') if bounds else None
+            vmax = bounds.get('max_bound') if bounds else None
+            if vmin is not None and vmax is not None:
+                logger.info(f"Using heatmap limits: vmin={vmin}, vmax={vmax}")
 
             # Create heatmap with bounds
             sns.heatmap(
