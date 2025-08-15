@@ -1,8 +1,10 @@
 import panel as pn
 import os
 from pathlib import Path
-import weasyprint
-from weasyprint import HTML, CSS
+import asyncio
+import tempfile
+import base64
+from io import BytesIO
 
 # Configure Panel
 pn.extension('bootstrap')
@@ -172,40 +174,30 @@ def create_umap_layout():
     
     return main_layout
 
-
-def export_to_pdf_weasyprint(layout, output_path="umap_report.pdf"):
+async def export_to_pdf_playwright(layout, output_path="umap_report.pdf"):
     """
-    Export the Panel layout to PDF using weasyprint with proper implementation.
+    Export the Panel layout to PDF using Playwright to render the actual HTML.
+    This preserves the exact visual appearance of the Panel layout.
     """
     try:
-        print("=== WEASYPRINT PDF EXPORT ===")
+        print("=== PLAYWRIGHT PDF EXPORT ===")
         
-        # Save as HTML first
-        html_path = "umap_report.html"
+        # Save Panel layout to HTML
+        html_path = "umap_report_temp.html"
         print(f"1. Saving Panel layout to HTML: {html_path}")
         layout.save(html_path)
         
-        # Check if HTML file was created and has content
         if not os.path.exists(html_path):
             print("❌ ERROR: HTML file was not created")
             return None
-            
+        
+        # Read the HTML content
         with open(html_path, 'r', encoding='utf-8') as f:
             html_content = f.read()
-            print(f"2. HTML file size: {len(html_content)} characters")
-            
-            if len(html_content) < 100:
-                print("❌ WARNING: HTML file seems too small")
-                print(f"HTML content: {html_content[:500]}...")
-                return None
-            
-            print("✅ HTML file looks valid")
         
-        # Create a proper HTML document for WeasyPrint
-        print("3. Creating enhanced HTML for WeasyPrint...")
+        print(f"2. HTML file size: {len(html_content)} characters")
         
-        # Extract the body content from Panel's HTML
-        # Panel saves HTML that needs to be embedded in a proper document
+        # Create enhanced HTML with proper styling for PDF
         enhanced_html = f"""
         <!DOCTYPE html>
         <html lang="en">
@@ -215,7 +207,7 @@ def export_to_pdf_weasyprint(layout, output_path="umap_report.pdf"):
             <title>UMAP Analysis Report</title>
             <style>
                 @page {{
-                    size: A4;
+                    size: A4 landscape;
                     margin: 0.5in;
                 }}
                 body {{
@@ -225,7 +217,7 @@ def export_to_pdf_weasyprint(layout, output_path="umap_report.pdf"):
                     background-color: white;
                     line-height: 1.4;
                 }}
-                /* Panel-specific styles */
+                /* Ensure Panel elements are visible */
                 .bk-root {{
                     font-family: Arial, sans-serif !important;
                 }}
@@ -264,6 +256,16 @@ def export_to_pdf_weasyprint(layout, output_path="umap_report.pdf"):
                     width: auto !important;
                     height: auto !important;
                 }}
+                /* Print-specific styles */
+                @media print {{
+                    body {{
+                        -webkit-print-color-adjust: exact !important;
+                        color-adjust: exact !important;
+                    }}
+                    .vertical-text {{
+                        background-color: #e3f2fd !important;
+                    }}
+                }}
             </style>
         </head>
         <body>
@@ -272,74 +274,63 @@ def export_to_pdf_weasyprint(layout, output_path="umap_report.pdf"):
         </html>
         """
         
-        # Save the enhanced HTML
+        # Save enhanced HTML
         enhanced_html_path = "umap_report_enhanced.html"
         with open(enhanced_html_path, 'w', encoding='utf-8') as f:
             f.write(enhanced_html)
-        print(f"4. Enhanced HTML saved: {enhanced_html_path}")
+        print(f"3. Enhanced HTML saved: {enhanced_html_path}")
         
-        # Convert HTML to PDF using weasyprint
-        print("5. Converting to PDF with WeasyPrint...")
+        # Use Playwright to render HTML and generate PDF
+        print("4. Starting Playwright browser...")
         
-        # Use HTML from string instead of filename for better control
-        html_doc = HTML(string=enhanced_html)
-        
-        # Create CSS for PDF - minimal and focused
-        pdf_css = CSS(string='''
-            @page {
-                size: A4;
-                margin: 0.5in;
-            }
-            body {
-                font-family: Arial, sans-serif;
-                margin: 0;
-                padding: 20px;
-                background-color: white;
-            }
-            .bk-root {
-                font-family: Arial, sans-serif !important;
-            }
-            .bk-panel-models-layout-Column, .bk-panel-models-layout-Row {
-                display: flex !important;
-            }
-            .bk-panel-models-layout-Row {
-                flex-direction: row !important;
-            }
-            .bk-panel-models-layout-Column {
-                flex-direction: column !important;
-            }
-            img {
-                max-width: 100% !important;
-                height: auto !important;
-            }
-            .vertical-text {
-                writing-mode: vertical-rl !important;
-                text-orientation: mixed !important;
-                transform: rotate(180deg) !important;
-            }
-        ''')
-        
-        print("6. Writing PDF...")
-        html_doc.write_pdf(output_path, stylesheets=[pdf_css])
+        try:
+            from playwright.async_api import async_playwright
+            
+            async with async_playwright() as p:
+                # Launch browser
+                browser = await p.chromium.launch()
+                page = await browser.new_page()
+                
+                # Set viewport for better rendering
+                await page.set_viewport_size({"width": 1200, "height": 800})
+                
+                # Load the HTML content
+                print("5. Loading HTML content...")
+                await page.set_content(enhanced_html)
+                
+                # Wait for content to load
+                await page.wait_for_load_state('networkidle')
+                
+                # Generate PDF
+                print("6. Generating PDF...")
+                await page.pdf(
+                    path=output_path,
+                    format='A4',
+                    landscape=True,
+                    margin={
+                        'top': '0.5in',
+                        'right': '0.5in',
+                        'bottom': '0.5in',
+                        'left': '0.5in'
+                    },
+                    print_background=True,
+                    prefer_css_page_size=True
+                )
+                
+                await browser.close()
+                
+        except ImportError:
+            print("❌ Playwright not available - trying alternative methods")
+            return None
         
         # Check if PDF was created
         if os.path.exists(output_path):
             pdf_size = os.path.getsize(output_path)
-            print(f"✅ PDF successfully created: {output_path} (size: {pdf_size} bytes)")
+            print(f"✅ PDF successfully created with Playwright: {output_path} (size: {pdf_size} bytes)")
             
             if pdf_size < 1000:
                 print("⚠️  WARNING: PDF file seems too small, may be empty")
-                # Check if it's a valid PDF
-                try:
-                    with open(output_path, 'rb') as f:
-                        pdf_content = f.read(100)
-                        if b'%PDF' not in pdf_content:
-                            print("❌ ERROR: File is not a valid PDF")
-                            return None
-                        else:
-                            print("✅ File is a valid PDF")
-                except Exception as e:
-                    print(f"❌ Error checking PDF: {e}")
+                return None
             
             return output_path
         else:
@@ -347,7 +338,39 @@ def export_to_pdf_weasyprint(layout, output_path="umap_report.pdf"):
             return None
         
     except Exception as e:
-        print(f"❌ Error exporting to PDF with WeasyPrint: {e}")
+        print(f"❌ Error exporting to PDF with Playwright: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+def export_to_pdf_playwright_sync(layout, output_path="umap_report.pdf"):
+    """
+    Synchronous wrapper for Playwright PDF export.
+    """
+    try:
+        return asyncio.run(export_to_pdf_playwright(layout, output_path))
+    except Exception as e:
+        print(f"❌ Error in Playwright sync wrapper: {e}")
+        return None
+
+def export_to_html(layout, output_path="umap_report.html"):
+    """
+    Export the Panel layout to HTML as a fallback option.
+    """
+    try:
+        print("=== HTML EXPORT ===")
+        layout.save(output_path)
+        
+        if os.path.exists(output_path):
+            file_size = os.path.getsize(output_path)
+            print(f"✅ HTML successfully created: {output_path} (size: {file_size} bytes)")
+            return output_path
+        else:
+            print("❌ HTML file was not created")
+            return None
+            
+    except Exception as e:
+        print(f"❌ Error exporting to HTML: {e}")
         import traceback
         traceback.print_exc()
         return None
@@ -376,18 +399,19 @@ def main():
     report = create_full_report()
     
     # Show the app
-    report.show()
+    # report.show()
 
-
-    print("Attempting PDF export with enhanced WeasyPrint...")
-    pdf_path = export_to_pdf_weasyprint(report)
+    print("Attempting PDF export with Playwright...")
+    pdf_path = export_to_pdf_playwright_sync(report)
     
     if pdf_path and pdf_path.endswith('.pdf'):
         print(f"✅ PDF successfully created: {pdf_path}")
-    elif pdf_path and pdf_path.endswith('.html'):
-        print(f"⚠️  PDF export failed, HTML saved: {pdf_path}")
     else:
-        print("❌ PDF export completely failed")
+        print("❌ PDF export failed")
+        print("🔄 Attempting HTML export as fallback...")
+        html_path = export_to_html(report)
+        if html_path:
+            print(f"✅ HTML export successful: {html_path}")
     
     return report, pdf_path
 
